@@ -3,6 +3,8 @@ import socket
 import simulator
 import time
 from message_parser import receive_message_from_listener
+import shutil
+from storage_manager import StorageManager
 
 
 ACK = [
@@ -11,6 +13,16 @@ ACK = [
 ]
 
 TEST_MLLP_PORT = 8440
+
+
+def initialise_system():
+    """
+    Initialises the environment for the aki prediction system.
+    """
+    storage_manager = StorageManager()
+    storage_manager.initialising_database()
+    
+    
 
 def to_mllp(segments):
     m = bytes(chr(simulator.MLLP_START_OF_BLOCK), "ascii")
@@ -39,4 +51,5 @@ def listen_for_messages():
 
     
 if __name__ == '__main__':
-    listen_for_messages()
+    initialise_system()
+    #listen_for_messages()
