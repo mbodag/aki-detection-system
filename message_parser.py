@@ -1,5 +1,11 @@
 from hl7apy import parser
-from hl7apy.exceptions import ParseException
+
+
+def receive_message_from_listener(message):
+    print(f"Received message from listener: {message}")
+
+
+
 
 class MessageParser:
     """
@@ -17,12 +23,8 @@ class MessageParser:
         Returns:
         HL7Message: An object representing the parsed HL7 message.
         """
-        try:
-            hl7_message = parser.parse_message(hl7_message_str)
-            return hl7_message
-        except ParseException as e:
-            print(f"Failed to parse HL7 message: {e}")
-            return None
+        hl7_message = parser.parse_message(hl7_message_str)
+        return hl7_message
 
     @staticmethod
     def extract_patient_info(hl7_message):
