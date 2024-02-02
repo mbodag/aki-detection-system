@@ -3,8 +3,7 @@ from hl7apy import parser
 
 def receive_message_from_listener(message):
     print(f"Received message from listener: {message}")
-
-
+    
 
 
 class MessageParser:
@@ -23,8 +22,24 @@ class MessageParser:
         Returns:
         HL7Message: An object representing the parsed HL7 message.
         """
-        hl7_message = parser.parse_message(hl7_message_str)
-        return hl7_message
+        message = hl7_message_str
+        message_type = message[0].split("|")[8]
+        print('Message type:', message_type)
+        patient_data = {}
+        if message_type == 'ADT^A01':
+            patient_info = message[1].split("|")
+            patient_data['MRN'] = patient_info[3]
+            patient_data['Sex'] = patient_info[8]
+            patient_data['DOB'] = patient_info[7]
+            patient_data['Name'] = patient_info[5]
+        elif message_type == 'ORU^R01':
+            patient_data['MRN'] = message[1].split("|")[3]
+            patient_data['Test time'] = message[2].split("|")[7]
+            patient_data['Creating amount'] = message[3].split("|")[5]
+        elif message_type == 'ADT^A03': 
+            patient_data['MRN'] = message[1].split("|")[3]
+
+        
 
     @staticmethod
     def extract_patient_info(hl7_message):
