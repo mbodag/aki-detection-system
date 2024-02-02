@@ -1,4 +1,5 @@
 from hl7apy import parser
+from hospital_message import PatientDischargeMessage, PatientAdmissionMessage, TestResultMessage
 
 
 def receive_message_from_listener(message):
@@ -25,19 +26,22 @@ class MessageParser:
         message = hl7_message_str
         message_type = message[0].split("|")[8]
         print('Message type:', message_type)
-        patient_data = {}
         if message_type == 'ADT^A01':
             patient_info = message[1].split("|")
-            patient_data['MRN'] = patient_info[3]
-            patient_data['Sex'] = patient_info[8]
-            patient_data['DOB'] = patient_info[7]
-            patient_data['Name'] = patient_info[5]
+            message_object = PatientAdmissionMessage(patient_info[3], patient_info[5], patient_info[7], patient_info[8])
+
         elif message_type == 'ORU^R01':
-            patient_data['MRN'] = message[1].split("|")[3]
-            patient_data['Test time'] = message[2].split("|")[7]
-            patient_data['Creating amount'] = message[3].split("|")[5]
+            mrn = message[1].split("|")[3]
+            test_time = message[2].split("|")[7]
+            test_day = test_time[:4]+"-"+test_time[4:6]+"-"+test_time[6:8]
+            test_hour = test_time[8:10]+":"+test_time[10:]
+            test_result = message[3].split("|")[5]
+            
+            message_object = TestResultMessage(mrn, test_day, test_hour, test_result)
         elif message_type == 'ADT^A03': 
-            patient_data['MRN'] = message[1].split("|")[3]
+            mrn = message[1].split("|")[3]
+            message_object = PatientDischargeMessage(mrn)
+        return message_object
 
         
 
