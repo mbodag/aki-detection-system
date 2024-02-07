@@ -11,9 +11,11 @@ class MessageParser:
     """
     MessageParser is responsible for parsing HL7 messages.
     """
+    
+    def __init__(self, storage_manager):
+        self.storage_manager = storage_manager
 
-    @staticmethod
-    def parse_message(hl7_message_str):
+    def parse_message(self, hl7_message_str):
         """
         Parse an HL7 message string into an HL7 message object.
 
@@ -28,7 +30,7 @@ class MessageParser:
         print('Message type:', message_type)
         if message_type == 'ADT^A01':
             patient_info = message[1].split("|")
-            message_object = PatientAdmissionMessage(patient_info[3], patient_info[5], patient_info[7], patient_info[8])
+            message_object = PatientAdmissionMessage(patient_info[3], patient_info[5], patient_info[7], patient_info[8], self.storage_manager)
 
         elif message_type == 'ORU^R01':
             mrn = message[1].split("|")[3]
@@ -36,14 +38,13 @@ class MessageParser:
             test_day = test_time[:4]+"-"+test_time[4:6]+"-"+test_time[6:8]
             test_hour = test_time[8:10]+":"+test_time[10:]
             test_result = message[3].split("|")[5]
+            message_object = TestResultMessage(mrn, test_day, test_hour, test_result, self.storage_manager)
             
-            message_object = TestResultMessage(mrn, test_day, test_hour, test_result)
         elif message_type == 'ADT^A03': 
             mrn = message[1].split("|")[3]
-            message_object = PatientDischargeMessage(mrn)
+            message_object = PatientDischargeMessage(mrn, self.storage_manager)
+            
         return message_object
-
-        
 
     @staticmethod
     def extract_patient_info(hl7_message):

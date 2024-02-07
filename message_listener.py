@@ -5,6 +5,7 @@ import time
 from message_parser import receive_message_from_listener
 import shutil
 from storage_manager import StorageManager
+from message_parser import MessageParser
 
 
 ACK = [
@@ -20,7 +21,11 @@ def initialise_system():
     Initialises the environment for the aki prediction system.
     """
     storage_manager = StorageManager()
-    storage_manager.initialising_database()
+    storage_manager.load_csv_data()
+    storage_manager.load_model()
+    message_parser = MessageParser(storage_manager)
+    
+    return None
     
     
 
