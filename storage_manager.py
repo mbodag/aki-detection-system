@@ -12,11 +12,20 @@ class StorageManager:
         """
         Initializes the storage manager by setting up the database connection and sessionmaker.
         """
-        self.creatine_results_history = dict()  # Stores creatine results for all patients
-        self.current_patients = dict()  # Stores data for patients currently in memory
+        # Stores creatine results for all patients
+        # The file history.csv is imported and the data is stored in this dictionary
+        # The key is the MRN and the value is a list of creatine results as floats
+        # We only write to the creatine_results_history when a patient is discharged
+        self.creatine_results_history = dict()
+        
+        
+        # Stores data for patients currently admitted in the hospital
+        # The key is the MRN and the value is a dictionary containing patient information
+        # Entries are added when a patient is admitted and removed when a patient is discharged
+        self.current_patients = dict() 
     
     def initialising_database(self):
-        # Read the file with csv.reader to determine the maximum number of columns
+        # Read the history.csv file to populate the creatine_results_history dictionary
         with open(HISTORY_CSV_PATH, 'r') as file:
             reader = csv.reader(file)
             next(reader, None)  # Skip the header row
@@ -28,7 +37,7 @@ class StorageManager:
                 
     def add_admitted_patient_to_current_patients(self, admission_msg):
         """
-        Adds an admitted patient's data to the in-memory dictionary from the database.
+        Adds an admitted patient's data to the current_patients dictionary.
         """
         if admission_msg.mrn in self.creatine_results_history:
             self.current_patients[admission_msg.mrn] = {
@@ -64,6 +73,12 @@ class StorageManager:
         else:
             raise ValueError(f"Patient {mrn} not found in current patients.")
         
+    def update_patients_data_in_creatine_results_history(self, discharge_msg):
+        """
+        Updates the creatine results history for a discharged patient.
+        """
+        self.creatine_results_history[discharge_msg.mrn] = self.current_patients[discharge_msg.mrn]['creatinine_results']
+    
     def add_message_to_log_csv(self, message):
         """
         Appends a message to message_log.csv.
@@ -77,7 +92,7 @@ class StorageManager:
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'type': 'PatientAdmission',
                 'mrn': message.mrn,
-                'additional_info': f"Name: {message.name}, DOB: {message.date_of_birth}, Sex: {message.sex}"
+                'additional_info': f"Name: {message.name}. DOB: {message.date_of_birth}. Sex: {message.sex}"
             }
         elif isinstance(message, PatientDischargeMessage):
             row_data = {
@@ -91,7 +106,7 @@ class StorageManager:
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'type': 'TestResult',
                 'mrn': message.mrn,
-                'additional_info': f"Test Date: {message.test_date}, Test Time: {message.test_time}, Creatine Value: {message.creatine_value}"
+                'additional_info': f"Test Date: {message.test_date}. Test Time: {message.test_time}. Creatine Value: {message.creatine_value}"
             }
         
         # Append the data to the CSV file
@@ -99,7 +114,7 @@ class StorageManager:
             writer = csv.DictWriter(csvfile, fieldnames=fields)
             writer.writerow(row_data)
 
-    def instantiate_messages_from_log(storage_manager):
+    def instantiate_all_past_messages_from_log(storage_manager):
         """
         Reads message_log.csv, sorts messages chronologically, and creates message object instances.
         """
@@ -110,7 +125,7 @@ class StorageManager:
         for _, row in sorted_df.iterrows():
             if row['type'] == 'PatientAdmission':
                 # Assuming additional_info contains comma-separated data
-                info_parts = row['additional_info'].split(', ')
+                info_parts = row['additional_info'].split('. ')
                 name = info_parts[0].split(': ')[1]
                 dob = info_parts[1].split(': ')[1]
                 sex = info_parts[2].split(': ')[1]
@@ -124,7 +139,7 @@ class StorageManager:
                                         storage_manager)
                 
             elif row['type'] == 'TestResult':
-                info_parts = row['additional_info'].split(', ')
+                info_parts = row['additional_info'].split('. ')
                 test_date = info_parts[0].split(': ')[1]
                 test_time = info_parts[1].split(': ')[1]
                 creatine_value = float(info_parts[2].split(': ')[1])
@@ -134,12 +149,6 @@ class StorageManager:
                                   creatine_value, 
                                   storage_manager, 
                                   trigger_aki_prediction=False)
-    
-    def update_patients_data_in_creatine_results_history(self, discharge_msg):
-        """
-        Updates the creatine results history for a discharged patient.
-        """
-        self.creatine_results_history[discharge_msg.mrn] = self.current_patients[discharge_msg.mrn]['creatinine_results']
 
 if __name__ == "__main__":
     storage_manager = StorageManager()

@@ -6,6 +6,7 @@ from message_parser import receive_message_from_listener
 import shutil
 from storage_manager import StorageManager
 from message_parser import MessageParser
+from aki_predictor import AKIPredictor
 
 
 ACK = [
@@ -23,7 +24,10 @@ def initialise_system():
     storage_manager = StorageManager()
     storage_manager.load_csv_data()
     storage_manager.load_model()
-    message_parser = MessageParser(storage_manager)
+    
+    aki_predictor = AKIPredictor(storage_manager)
+
+    message_parser = MessageParser(storage_manager, aki_predictor)
     
     return None
     

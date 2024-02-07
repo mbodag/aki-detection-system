@@ -12,8 +12,9 @@ class MessageParser:
     MessageParser is responsible for parsing HL7 messages.
     """
     
-    def __init__(self, storage_manager):
+    def __init__(self, storage_manager, aki_predictor):
         self.storage_manager = storage_manager
+        self.aki_predictor = aki_predictor
 
     def parse_message(self, hl7_message_str):
         """
@@ -38,7 +39,7 @@ class MessageParser:
             test_day = test_time[:4]+"-"+test_time[4:6]+"-"+test_time[6:8]
             test_hour = test_time[8:10]+":"+test_time[10:]
             test_result = message[3].split("|")[5]
-            message_object = TestResultMessage(mrn, test_day, test_hour, test_result, self.storage_manager)
+            message_object = TestResultMessage(mrn, test_day, test_hour, test_result, self.storage_manager, self.aki_predictor)
             
         elif message_type == 'ADT^A03': 
             mrn = message[1].split("|")[3]
