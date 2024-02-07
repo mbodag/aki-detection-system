@@ -29,3 +29,6 @@ class AKIPredictorTest(unittest.TestCase):
 
         self.assertEqual(result, 1)
         model_mock.predict.assert_called_once_with
+
+if __name__ == '__main__':
+    unittest.main()
