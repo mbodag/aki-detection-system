@@ -16,7 +16,7 @@ class PatientAdmissionMessage():
     def execute_admission_actions(self):
         # Appends patient to Short-Term Storage
         self.storage_manager.add_message_to_log_csv(self)
-        self.storage_manager.add_patient_to_current_patients(self)
+        self.storage_manager.add_admitted_patient_to_current_patients(self)
         pass
         
 
@@ -35,17 +35,16 @@ class PatientDischargeMessage():
     def execute_discharge_actions(self):
         self.storage_manager.add_message_to_log_csv(self)
         self.storage_manager.remove_patient_from_current_patients(self)
-        self.storage_manager.add_patient_to_all_patients_dict(self)
+        self.storage_manager.update_patients_data_in_creatine_results_history(self)
         
         # TODO: Validates and synchronises data across Short-Term and Long-Term Storage
-        # remove patient from short-term storage
 
 
 class TestResultMessage():
     """
     Handles test result messages.
     """
-    def __init__(self, mrn, test_date, test_time, creatine_value, storage_manager):
+    def __init__(self, mrn, test_date, test_time, creatine_value, storage_manager, trigger_aki_prediction=True):
         self.mrn = mrn
         self.test_date = test_date
         self.test_time = test_time
