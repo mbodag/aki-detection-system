@@ -16,14 +16,12 @@ class AlertManager:
         Parameters:
         patient_mrn (str): The medical record number of the patient.
         """
-        # The implementation here will depend on the hospital's alerting system API
-        # For example, if it's a web service, you might use the requests library to POST data
         try:
-            alert_data = {
-                'patient_mrn': patient_mrn,
-                'message': 'Potential AKI detected.'
+            alert_data = patient_mrn
+            headers = {
+                "Content-Type": "text/plain"
             }
-            response = requests.post(ALERT_SERVICE_ENDPOINT, json=alert_data)
+            response = requests.post("/page", data=alert_data, headers=headers)
             response.raise_for_status()
             print(f"Alert sent for patient MRN: {patient_mrn}")
         except requests.RequestException as e:
