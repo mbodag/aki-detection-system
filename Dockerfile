@@ -5,6 +5,7 @@ COPY simulator_test.py /simulator/
 WORKDIR /simulator
 RUN ./simulator_test.py
 COPY messages.mllp /data/
+COPY history.csv /simulator/
 COPY message_parser.py /simulator/
 COPY hospital_message.py /simulator/
 COPY message_listener.py /simulator/
