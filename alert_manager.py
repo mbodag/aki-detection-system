@@ -1,7 +1,9 @@
 # alert_manager.py
 
-import requests
-from config import ALERT_SERVICE_ENDPOINT
+import urllib
+import urllib.error
+import urllib.request
+from config import LISTENER_IP, PAGER_PORT
 
 class AlertManager:
     """
@@ -16,16 +18,9 @@ class AlertManager:
         Parameters:
         patient_mrn (str): The medical record number of the patient.
         """
-        try:
-            alert_data = patient_mrn
-            headers = {
-                "Content-Type": "text/plain"
-            }
-            response = requests.post("/page", data=alert_data, headers=headers)
-            response.raise_for_status()
-            print(f"Alert sent for patient MRN: {patient_mrn}")
-        except requests.RequestException as e:
-            print(f"Failed to send alert: {e}")
+        alert_data = b = bytes(patient_mrn, 'utf-8')
+        r = urllib.request.urlopen(f"http://{LISTENER_IP}:{PAGER_PORT}/page", data=alert_data)
+        
 
 # Example usage:
-# AlertManager.send_alert('12345678')
+AlertManager.send_alert('12345678')
