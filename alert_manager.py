@@ -3,7 +3,7 @@
 import urllib
 import urllib.error
 import urllib.request
-from config import LISTENER_IP, PAGER_PORT
+from config import PAGER_ADDRESS, PAGER_PORT
 
 class AlertManager:
     """
@@ -19,7 +19,7 @@ class AlertManager:
         patient_mrn (str): The medical record number of the patient.
         """
         alert_data = bytes(patient_mrn, 'utf-8')
-        r = urllib.request.urlopen(f"http://{LISTENER_IP}:{PAGER_PORT}/page", data=alert_data)
+        r = urllib.request.urlopen(f"http://{PAGER_ADDRESS}:{PAGER_PORT}/page", data=alert_data)
         
 
 # Example usage:
