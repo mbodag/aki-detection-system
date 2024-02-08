@@ -5,9 +5,10 @@ import time
 from storage_manager import StorageManager
 from message_parser import MessageParser
 from aki_predictor import AKIPredictor
-from config import MLLP_PORT, LISTENER_IP
+from config import MLLP_PORT, MLLP_ADDRESS
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
+import pandas as pd
 
 
 ACK = [
@@ -32,6 +33,11 @@ def initialise_system():
     return storage_manager, aki_predictor, message_parser, alert_manager
     
     
+def compute_f3_score(true_positives, false_positives, false_negatives):
+    precision = true_positives / (true_positives + false_positives)
+    recall = true_positives / (true_positives + false_negatives)
+    f3_score = (1 + 3**2) * (precision * recall) / (3**2 * precision + recall)
+    return f3_score
 
 def to_mllp(segments):
     m = bytes(chr(simulator.MLLP_START_OF_BLOCK), "ascii")
@@ -44,41 +50,33 @@ def from_mllp(buffer):
 
 def listen_for_messages(storage_manager, aki_predictor, message_parser, alert_manager):
     messages = []
-    counter = 0
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((LISTENER_IP, MLLP_PORT))
-                print(f"Listening for HL7 messages on 'localhost':{MLLP_PORT}")
-                while True:
-                    buffer = s.recv(1024)
-                    if len(buffer) == 0:
-                        break
-                    messages.append(from_mllp(buffer))
-                    message_object = message_parser.parse_message(from_mllp(buffer))
-                    
-                    # Be careful because we might store a message it then crash before acknowledging it (and so we'll receive it twice)
-                    storage_manager.add_message_to_log_csv(message_object)
-                    # STORAGE STAGE
-                    if isinstance(message_object, PatientAdmissionMessage):
-                        storage_manager.add_admitted_patient_to_current_patients(message_object)
-                    elif isinstance(message_object, TestResultMessage):
-                        
-                        storage_manager.add_test_result_to_current_patients(message_object)
-                        prediction_result = aki_predictor.predict_aki(message_object.mrn)
-                        
-                        #print(prediction_result)
-                        #breakpoint()
-                        if prediction_result == 1:
-                            counter += 1
-                            alert_manager.send_alert(message_object.mrn)
-                            
-                    elif isinstance(message_object, PatientDischargeMessage):
-                        storage_manager.remove_patient_from_current_patients(message_object)
-                    ack = to_mllp(ACK)
-                    s.sendall(ack[0:len(ack)//2])
-                    s.sendall(ack[len(ack)//2:])
-    print(f"Received {counter} pagings")
-    print(f"Received {len(messages)} messages")
-    
+        s.connect((MLLP_ADDRESS, MLLP_PORT))
+        print(f"Listening for HL7 messages on '{MLLP_ADDRESS}':{MLLP_PORT}")
+        while True:
+            buffer = s.recv(1024)
+            if len(buffer) == 0:
+                break
+            messages.append(from_mllp(buffer))
+            message_object = message_parser.parse_message(from_mllp(buffer))
+            
+            # Be careful because we might store a message it then crash before acknowledging it (and so we'll receive it twice)
+            
+            # STORAGE STAGE
+            if isinstance(message_object, PatientAdmissionMessage):
+                storage_manager.add_admitted_patient_to_current_patients(message_object)
+            elif isinstance(message_object, TestResultMessage):
+                storage_manager.add_test_result_to_current_patients(message_object)
+                prediction_result = aki_predictor.predict_aki(message_object.mrn)
+                if prediction_result == 1:
+                    alert_manager.send_alert(message_object.mrn)        
+            elif isinstance(message_object, PatientDischargeMessage):
+                storage_manager.remove_patient_from_current_patients(message_object)
+            
+            storage_manager.add_message_to_log_csv(message_object)
+            ack = to_mllp(ACK)
+            s.sendall(ack[0:len(ack)//2])
+            s.sendall(ack[len(ack)//2:])
 if __name__ == '__main__':
     storage_manager, aki_predictor, message_parser, alert_manager = initialise_system()
     listen_for_messages(storage_manager, aki_predictor, message_parser, alert_manager)
