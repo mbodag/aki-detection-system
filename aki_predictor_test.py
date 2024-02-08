@@ -1,9 +1,7 @@
 import unittest
-from unittest.mock import Mock
-
-from datetime import datetime
+from unittest.mock import Mock, call
 import numpy as np
-
+from datetime import datetime
 from aki_predictor import AKIPredictor
 
 class AKIPredictorTest(unittest.TestCase):
@@ -28,7 +26,17 @@ class AKIPredictorTest(unittest.TestCase):
         result = predictor.predict_aki(self.test_mrn)
 
         self.assertEqual(result, 1)
-        model_mock.predict.assert_called_once_with
+
+        # Calculate expected age to assert correct input to the model
+        today = datetime.date.today()
+        dob = datetime.datetime.strptime(self.test_patient_data['date_of_birth'], "%Y-%m-%d")
+        expected_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+        # Expected input features include sex (encoded as 1 for 'f'), age, and creatinine results
+        expected_input_features = np.array([1, expected_age] + self.test_patient_data['creatinine_results'], dtype=np.float64).reshape(1, -1)
+        
+        # Assert the model's predict method was called with the correct input features
+        model_mock.predict.assert_called_once_with(expected_input_features)
 
 if __name__ == '__main__':
     unittest.main()
