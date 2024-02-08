@@ -12,18 +12,18 @@ class MessageParserTest(unittest.TestCase):
         self.parser = MessageParser(self.storage_manager, self.aki_predictor)
 
     def test_parse_admission_message(self):
-        hl7_message_str = '...ADT^A01 HL7 message string...'
-        message = self.parser.parse_message(hl7_message_str)
+        hl7_message_str = 'MSH|^~\&|SENDING_APPLICATION|SENDING_FACILITY|RECEIVING_APPLICATION|RECEIVING_FACILITY|202302080945||ADT^A01|123456|P|2.3|PID|||123^^^Hospital&1||Doe^John||19800101|M|||123 Fake St.^^Metropolis^NY^12345^USA|||||||'
+        message = self.parser.parse_message(hl7_message_str.split('|'))
         self.assertIsInstance(message, PatientAdmissionMessage)
 
     def test_parse_test_result_message(self):
-        hl7_message_str = '...ORU^R01 HL7 message string...'
-        message = self.parser.parse_message(hl7_message_str)
+        hl7_message_str = 'MSH|^~\&|LAB|Hospital|||202302081015||ORU^R01|789012|P|2.3|PID|||123^^^Hospital&1||Doe^John||19800101|M|||123 Fake St.^^Metropolis^NY^12345^USA|||||||OBR|1|||BLOOD^Blood Test|||202302080945|OBX|1|NM|CREAT^Creatinine||1.2|mg/dL|0.5-1.2|N|||F|||202302081015|'
+        message = self.parser.parse_message(hl7_message_str.split('|'))
         self.assertIsInstance(message, TestResultMessage)
 
     def test_parse_discharge_message(self):
-        hl7_message_str = '...ADT^A03 HL7 message string...'
-        message = self.parser.parse_message(hl7_message_str)
+        hl7_message_str = 'MSH|^~\&|SENDING_APPLICATION|SENDING_FACILITY|RECEIVING_APPLICATION|RECEIVING_FACILITY|202302081130||ADT^A03|789012|P|2.3|PID|||123^^^Hospital&1||Doe^John||19800101|M|||123 Fake St.^^Metropolis^NY^12345^USA|||||||'
+        message = self.parser.parse_message(hl7_message_str.split('|'))
         self.assertIsInstance(message, PatientDischargeMessage)
 
     def test_extract_patient_info(self):
