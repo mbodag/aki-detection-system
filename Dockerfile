@@ -1,5 +1,5 @@
 FROM ubuntu:jammy
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -yq install python3
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -yq install python3 python3-pip
 COPY simulator.py /simulator/
 COPY simulator_test.py /simulator/
 WORKDIR /simulator
@@ -17,6 +17,8 @@ COPY utils.py /simulator/
 COPY model/finalized_model.pkl /simulator/model/
 COPY model/model.jl /simulator/model/
 COPY tests /simulator/tests
+COPY requirements.txt /simulator/
 EXPOSE 8440
 EXPOSE 8441
+RUN pip3 install -r requirements.txt
 CMD /simulator/simulator.py --messages=/data/messages.mllp
