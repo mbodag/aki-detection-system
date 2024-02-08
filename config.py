@@ -7,6 +7,5 @@ HOSPITAL_DATA_CSV_PATH = 'hospital_data.csv'
 # Details for the message listener (e.g., IP and port for HL7 messages)
 LISTENER_IP = '127.0.0.1'
 MLLP_PORT = 8440
-
 PAGER_PORT = 8441
 

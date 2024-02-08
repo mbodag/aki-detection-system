@@ -1,21 +1,13 @@
-from hl7apy import parser
 from hospital_message import PatientDischargeMessage, PatientAdmissionMessage, TestResultMessage
-
-
-def receive_message_from_listener(message):
-    print(f"Received message from listener: {message}")
-    
-
 
 class MessageParser:
     """
     MessageParser is responsible for parsing HL7 messages.
     """
     
-    def __init__(self, storage_manager, aki_predictor):
-        self.storage_manager = storage_manager
-        self.aki_predictor = aki_predictor
-
+    def __init__(self):
+        pass
+    
     def parse_message(self, hl7_message_str):
         """
         Parse an HL7 message string into an HL7 message object.
@@ -28,10 +20,14 @@ class MessageParser:
         """
         message = hl7_message_str
         message_type = message[0].split("|")[8]
-        print('Message type:', message_type)
         if message_type == 'ADT^A01':
             patient_info = message[1].split("|")
-            message_object = PatientAdmissionMessage(patient_info[3], patient_info[5], patient_info[7], patient_info[8], self.storage_manager)
+            mrn = patient_info[3]
+            name = patient_info[5]
+            date_of_birth = patient_info[7]
+            date_of_birth = patient_info[7][0:4]+"-"+patient_info[7][4:6]+"-"+patient_info[7][6:8]
+            sex = patient_info[8]
+            message_object = PatientAdmissionMessage(mrn, name, date_of_birth, sex)
 
         elif message_type == 'ORU^R01':
             mrn = message[1].split("|")[3]
@@ -39,11 +35,11 @@ class MessageParser:
             test_day = test_time[:4]+"-"+test_time[4:6]+"-"+test_time[6:8]
             test_hour = test_time[8:10]+":"+test_time[10:]
             test_result = message[3].split("|")[5]
-            message_object = TestResultMessage(mrn, test_day, test_hour, test_result, self.storage_manager, self.aki_predictor)
+            message_object = TestResultMessage(mrn, test_day, test_hour, test_result)
             
         elif message_type == 'ADT^A03': 
             mrn = message[1].split("|")[3]
-            message_object = PatientDischargeMessage(mrn, self.storage_manager)
+            message_object = PatientDischargeMessage(mrn)
             
         return message_object
 

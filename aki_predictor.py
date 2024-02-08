@@ -4,6 +4,7 @@ import argparse
 import csv
 import datetime
 import pickle
+import joblib
 import numpy as np
 
 
@@ -26,8 +27,10 @@ class AKIPredictor:
         Returns:
         The loaded predictive model.
         """
-        with open("/model/finalized_model.pkl", "rb") as model_file:
-            return pickle.load(model_file)
+        # with open("model/finalized_model.pkl", "rb") as model_file:
+        #     return pickle.load(model_file)
+        model = joblib.load("model/model.jl")
+        return model
 
     @staticmethod
     def determine_age(date_of_birth):
@@ -60,23 +63,23 @@ class AKIPredictor:
         if patient_data is None:
             raise ValueError(f"Patient with MRN {mrn} not found in current_patients dictionary.")
 
-        sex = 0 if patient_data['sex'] == 'm' else 1
+        sex = 0 if patient_data['sex'].lower() == 'm' else 1
         age = self.determine_age(patient_data['date_of_birth'])
 
         creatinine_results = patient_data['creatinine_results']
 
         # Number of creatinine results to use in the model
-        X_train_creatinine_columns = 9
+        X_train_creatinine_columns = 5
 
         # Adjust creatinine results to match model input requirements
         if len(creatinine_results) > X_train_creatinine_columns:
             recent_results = creatinine_results[-X_train_creatinine_columns:]
         else:
-            while len(creatinine_results) < X_train_creatinine_columns + 2:
+            while len(creatinine_results) < X_train_creatinine_columns:
                 creatinine_results.append(creatinine_results[-1])
             recent_results = creatinine_results
-
-        input_features = [sex, age] + recent_results
-
+        
+        input_features = [age, sex] + recent_results
+        #print(input_features)
         # Predict AKI and return the prediction
         return self.model.predict(np.array(input_features, dtype=np.float64).reshape(1, -1))[0]

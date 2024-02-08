@@ -18,9 +18,8 @@ class AlertManager:
         Parameters:
         patient_mrn (str): The medical record number of the patient.
         """
-        alert_data = b = bytes(patient_mrn, 'utf-8')
+        alert_data = bytes(patient_mrn, 'utf-8')
         r = urllib.request.urlopen(f"http://{LISTENER_IP}:{PAGER_PORT}/page", data=alert_data)
         
 
 # Example usage:
-AlertManager.send_alert('12345678')
