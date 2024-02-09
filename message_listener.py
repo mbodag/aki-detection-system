@@ -1,7 +1,5 @@
 
 import socket
-import simulator
-import time
 from storage_manager import StorageManager
 from message_parser import MessageParser
 from aki_predictor import AKIPredictor
@@ -12,7 +10,7 @@ from alert_manager import AlertManager
 import pandas as pd
 
 MLLP_ADDRESS, MLLP_PORT = os.environ['MLLP_ADDRESS'].split(":")
-
+MLLP_PORT = int(MLLP_PORT)
 
 ACK = [
     "MSH|^~\&|||||20240129093837||ACK|||2.5",
@@ -25,7 +23,7 @@ def initialise_system():
     Initialises the environment for the aki prediction system.
     """
     storage_manager = StorageManager()
-    storage_manager.initialise_database(past_messages=False)
+    storage_manager.initialise_database(message_log_filepath='message_log_1.csv')
     
     aki_predictor = AKIPredictor(storage_manager)
 
@@ -36,9 +34,12 @@ def initialise_system():
     
 
 def to_mllp(segments):
-    m = bytes(chr(simulator.MLLP_START_OF_BLOCK), "ascii")
+    MLLP_START_OF_BLOCK = 0x0b
+    MLLP_END_OF_BLOCK = 0x1c
+    MLLP_CARRIAGE_RETURN = 0x0d
+    m = bytes(chr(MLLP_START_OF_BLOCK), "ascii")
     m += bytes("\r".join(segments) + "\r", "ascii")
-    m += bytes(chr(simulator.MLLP_END_OF_BLOCK) + chr(simulator.MLLP_CARRIAGE_RETURN), "ascii")
+    m += bytes(chr(MLLP_END_OF_BLOCK) + chr(MLLP_CARRIAGE_RETURN), "ascii")
     return m
 
 def from_mllp(buffer):
