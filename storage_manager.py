@@ -2,6 +2,7 @@ import csv
 from datetime import datetime
 import pandas as pd
 import os
+import warnings
 from config import HISTORY_CSV_PATH, MESSAGE_LOG_CSV_PATH
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 
@@ -36,7 +37,7 @@ class StorageManager:
                 creatine_results = list(map(float, creatine_results))
                 self.creatine_results_history[mrn] = creatine_results
         
-        self.instantiate_all_past_messages_from_log()
+        self.instantiate_all_past_messages_from_log(message_log_filepath)
         
     def add_admitted_patient_to_current_patients(self, admission_msg):
         """
@@ -65,7 +66,8 @@ class StorageManager:
         if test_results_msg.mrn in self.current_patients:
             self.current_patients[test_results_msg.mrn]['creatinine_results'].append(float(test_results_msg.creatine_value))
         else:
-            raise ValueError(f"Patient {test_results_msg.mrn} not found in current patients.")
+            raise ValueError(f"The lab results of patient {test_results_msg.mrn} cannot be processed," +
+                             "since there is no record of an HL7 admission message for this patient.")
             
     def remove_patient_from_current_patients(self, discharge_msg):
         """
@@ -74,7 +76,8 @@ class StorageManager:
         if discharge_msg.mrn in self.current_patients:
             self.current_patients.pop(discharge_msg.mrn, None)
         else:
-            raise ValueError(f"Patient {discharge_msg.mrn} not found in current patients.")
+            raise ValueError(f"The discharge of patient {discharge_msg.mrn} cannot be processed," + 
+                             "since there is no record of an HL7 admission message for this patient.")
         
     def update_patients_data_in_creatine_results_history(self, discharge_msg):
         """
@@ -124,11 +127,15 @@ class StorageManager:
         # Check if the CSV file exists
         if not os.path.exists(message_log_filepath):
             # Create an empty CSV file
-            with open(message_log_filepath, 'w', newline=''):
+            with open(message_log_filepath, 'w', newline='') as csvfile:
+                header_row = ['timestamp', 'type', 'mrn', 'additional_info']
+                writer = csv.DictWriter(csvfile, fieldnames=header_row)
+                writer.writeheader()  # Write the header row
                 pass
         else:
             # Read the history.csv file to populate the creatine_results_history dictionary
             df = pd.read_csv(message_log_filepath)
+            print(df.head())
             df['timestamp'] = pd.to_datetime(df['timestamp'])
             sorted_df = df.sort_values(by='timestamp')
             
