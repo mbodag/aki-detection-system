@@ -24,7 +24,7 @@ class StorageManager:
         # Entries are added when a patient is admitted and removed when a patient is discharged
         self.current_patients = dict()
     
-    def initialise_database(self):
+    def initialise_database(self, past_messages = True):
         # Read the history.csv file to populate the creatine_results_history dictionary
         with open(HISTORY_CSV_PATH, 'r') as file:
             reader = csv.reader(file)
@@ -34,7 +34,9 @@ class StorageManager:
                 creatine_results = [row[col] for col in range(2, len(row), 2) if row[col] != ""]
                 creatine_results = list(map(float, creatine_results))
                 self.creatine_results_history[mrn] = creatine_results
-                
+        if past_messages:
+            self.instantiate_all_past_messages_from_log()
+        
     def add_admitted_patient_to_current_patients(self, admission_msg):
         """
         Adds an admitted patient's data to the current_patients dictionary.
@@ -129,26 +131,26 @@ class StorageManager:
                 name = info_parts[0].split(': ')[1]
                 dob = info_parts[1].split(': ')[1]
                 sex = info_parts[2].split(': ')[1]
-                PatientAdmissionMessage(row['mrn'], 
+                self.add_admitted_patient_to_current_patients(PatientAdmissionMessage(row['mrn'], 
                                         name, dob, 
                                         sex, 
-                                        storage_manager)
+                                        storage_manager))
                 
             elif row['type'] == 'PatientDischarge':
-                PatientDischargeMessage(row['mrn'], 
-                                        storage_manager)
+                self.storage_manager.add_test_result_to_current_patients(PatientDischargeMessage(row['mrn'], 
+                                        storage_manager))
                 
             elif row['type'] == 'TestResult':
                 info_parts = row['additional_info'].split('. ')
                 test_date = info_parts[0].split(': ')[1]
                 test_time = info_parts[1].split(': ')[1]
                 creatine_value = float(info_parts[2].split(': ')[1])
-                TestResultMessage(row['mrn'], 
+                self.remove_patient_from_current_patients(TestResultMessage(row['mrn'], 
                                   test_date, 
                                   test_time, 
                                   creatine_value, 
                                   storage_manager, 
-                                  trigger_aki_prediction=False)
+                                  trigger_aki_prediction=False))
 
 if __name__ == "__main__":
     storage_manager = StorageManager()

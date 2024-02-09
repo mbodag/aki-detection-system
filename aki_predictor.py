@@ -7,6 +7,7 @@ import pickle
 import joblib
 import numpy as np
 
+NUM_CREATINE_RESULTS_USED = 9
 
 class AKIPredictor:
     """A class to predict Acute Kidney Injury (AKI) based on patient data."""
@@ -27,10 +28,10 @@ class AKIPredictor:
         Returns:
         The loaded predictive model.
         """
-        # with open("model/finalized_model.pkl", "rb") as model_file:
-        #     return pickle.load(model_file)
-        model = joblib.load("model/model.jl")
-        return model
+        with open("model/finalized_model.pkl", "rb") as model_file:
+            return pickle.load(model_file)
+        # model = joblib.load("model/model.jl")
+        # return model
 
     @staticmethod
     def determine_age(date_of_birth):
@@ -69,7 +70,7 @@ class AKIPredictor:
         creatinine_results = patient_data['creatinine_results']
 
         # Number of creatinine results to use in the model
-        X_train_creatinine_columns = 5
+        X_train_creatinine_columns = NUM_CREATINE_RESULTS_USED
 
         # Adjust creatinine results to match model input requirements
         if len(creatinine_results) > X_train_creatinine_columns:

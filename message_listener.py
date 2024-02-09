@@ -17,27 +17,22 @@ ACK = [
 ]
 
 
-
 def initialise_system():
     """
     Initialises the environment for the aki prediction system.
     """
     storage_manager = StorageManager()
-    storage_manager.initialise_database()
+    storage_manager.initialise_database(past_messages=False)
     
     aki_predictor = AKIPredictor(storage_manager)
 
     message_parser = MessageParser()
     alert_manager = AlertManager()
     
+    
+    
     return storage_manager, aki_predictor, message_parser, alert_manager
     
-    
-def compute_f3_score(true_positives, false_positives, false_negatives):
-    precision = true_positives / (true_positives + false_positives)
-    recall = true_positives / (true_positives + false_negatives)
-    f3_score = (1 + 3**2) * (precision * recall) / (3**2 * precision + recall)
-    return f3_score
 
 def to_mllp(segments):
     m = bytes(chr(simulator.MLLP_START_OF_BLOCK), "ascii")
