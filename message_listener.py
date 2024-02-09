@@ -8,6 +8,7 @@ import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
 import pandas as pd
+from config import MESSAGE_LOG_CSV_PATH
 
 MLLP_ADDRESS, MLLP_PORT = os.environ['MLLP_ADDRESS'].split(":")
 MLLP_PORT = int(MLLP_PORT)
@@ -18,12 +19,12 @@ ACK = [
 ]
 
 
-def initialise_system():
+def initialise_system(message_log_filepath = MESSAGE_LOG_CSV_PATH):
     """
     Initialises the environment for the aki prediction system.
     """
     storage_manager = StorageManager()
-    storage_manager.initialise_database(message_log_filepath='message_log_1.csv')
+    storage_manager.initialise_database(message_log_filepath = message_log_filepath)
     
     aki_predictor = AKIPredictor(storage_manager)
 
