@@ -1,6 +1,6 @@
 import unittest
 from main.storage_manager import StorageManager
-from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
+from main.hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 
 class TestPatientDataPersistence(unittest.TestCase):
     """
@@ -15,8 +15,6 @@ class TestPatientDataPersistence(unittest.TestCase):
         and current_patients to simulate a fresh start for each test method.
         """
         self.storage_manager = StorageManager()
-        # Assuming the initialising_database method reads predefined data,
-        # but for the test, we'll work with an empty starting point.
         self.storage_manager.creatine_results_history = {}
         self.storage_manager.current_patients = {}
 

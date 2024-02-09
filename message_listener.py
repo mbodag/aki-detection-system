@@ -32,8 +32,6 @@ def initialise_system():
     message_parser = MessageParser()
     alert_manager = AlertManager()
     
-    
-    
     return storage_manager, aki_predictor, message_parser, alert_manager
     
 

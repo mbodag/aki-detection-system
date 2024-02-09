@@ -2,7 +2,8 @@
 
 # The path to the CSV file where historical patient data is stored.
 HISTORY_CSV_PATH = 'history.csv'
-HOSPITAL_DATA_CSV_PATH = 'hospital_data.csv'
+MESSAGE_LOG_CSV_PATH = 'message_log.csv'
+
 
 # Details for the message listener (e.g., IP and port for HL7 messages)
 MLLP_ADDRESS = 'host.docker.internal:8440'
