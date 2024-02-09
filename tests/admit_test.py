@@ -1,5 +1,5 @@
 import unittest
-from main.storage_manager import StorageManager
+from storage_manager import StorageManager
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 
 class TestPatientDataPersistence(unittest.TestCase):
@@ -36,12 +36,12 @@ class TestPatientDataPersistence(unittest.TestCase):
         """
         # Step 1: Admit the patient
         self.storage_manager.add_admitted_patient_to_current_patients(
-            PatientAdmissionMessage('001', 'John Doe', '1980-01-01', 'M', self.storage_manager)
+            PatientAdmissionMessage('001', 'John Doe', '1980-01-01', 'M')
         )
         
         # Step 2: Record a test result
         self.storage_manager.add_test_result_to_current_patients(
-            TestResultMessage('001', '2023-01-01', '08:00', 1.2, self.storage_manager)
+            TestResultMessage('001', '2023-01-01', '08:00', 1.2)
         )
         
         # Verify test result is recorded
@@ -49,13 +49,13 @@ class TestPatientDataPersistence(unittest.TestCase):
 
         # Step 3: Discharge the patient
         self.storage_manager.update_patients_data_in_creatine_results_history(
-            PatientDischargeMessage('001', self.storage_manager)
+            PatientDischargeMessage('001')
         )
-        self.storage_manager.remove_patient_from_current_patients('001')
+        self.storage_manager.remove_patient_from_current_patients(PatientDischargeMessage('001'))
         
         # Step 4: Re-admit the patient
         self.storage_manager.add_admitted_patient_to_current_patients(
-            PatientAdmissionMessage('001', 'John Doe', '1980-01-01', 'M', self.storage_manager)
+            PatientAdmissionMessage('001', 'John Doe', '1980-01-01', 'M')
         )
 
         # Verify the old lab test results are still accessible
