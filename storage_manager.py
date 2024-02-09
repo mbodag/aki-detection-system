@@ -1,7 +1,8 @@
 import csv
 from datetime import datetime
 import pandas as pd
-from config import HISTORY_CSV_PATH
+import os
+from config import HISTORY_CSV_PATH, MESSAGE_LOG_CSV_PATH
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 
 class StorageManager:
@@ -22,9 +23,9 @@ class StorageManager:
         # Stores data for patients currently admitted in the hospital
         # The key is the MRN and the value is a dictionary containing patient information
         # Entries are added when a patient is admitted and removed when a patient is discharged
-        self.current_patients = dict() 
+        self.current_patients = dict()
     
-    def initialising_database(self):
+    def initialise_database(self, message_log_filepath = MESSAGE_LOG_CSV_PATH):
         # Read the history.csv file to populate the creatine_results_history dictionary
         with open(HISTORY_CSV_PATH, 'r') as file:
             reader = csv.reader(file)
@@ -34,7 +35,9 @@ class StorageManager:
                 creatine_results = [row[col] for col in range(2, len(row), 2) if row[col] != ""]
                 creatine_results = list(map(float, creatine_results))
                 self.creatine_results_history[mrn] = creatine_results
-                
+        
+        self.instantiate_all_past_messages_from_log()
+        
     def add_admitted_patient_to_current_patients(self, admission_msg):
         """
         Adds an admitted patient's data to the current_patients dictionary.
@@ -60,18 +63,18 @@ class StorageManager:
         Appends a new test result for a patient in the in-memory dictionary.
         """
         if test_results_msg.mrn in self.current_patients:
-            self.current_patients[test_results_msg.mrn]['creatinine_results'].append(test_results_msg.creatine_value)
+            self.current_patients[test_results_msg.mrn]['creatinine_results'].append(float(test_results_msg.creatine_value))
         else:
             raise ValueError(f"Patient {test_results_msg.mrn} not found in current patients.")
             
-    def remove_patient_from_current_patients(self, mrn):
+    def remove_patient_from_current_patients(self, discharge_msg):
         """
         Removes a patient's information from the in-memory storage.
         """
-        if mrn in self.current_patients:
-            self.current_patients.pop(mrn, None)
+        if discharge_msg.mrn in self.current_patients:
+            self.current_patients.pop(discharge_msg.mrn, None)
         else:
-            raise ValueError(f"Patient {mrn} not found in current patients.")
+            raise ValueError(f"Patient {discharge_msg.mrn} not found in current patients.")
         
     def update_patients_data_in_creatine_results_history(self, discharge_msg):
         """
@@ -114,45 +117,52 @@ class StorageManager:
             writer = csv.DictWriter(csvfile, fieldnames=fields)
             writer.writerow(row_data)
 
-    def instantiate_all_past_messages_from_log(storage_manager):
+    def instantiate_all_past_messages_from_log(self, message_log_filepath):
         """
         Reads message_log.csv, sorts messages chronologically, and creates message object instances.
         """
-        df = pd.read_csv('message_log.csv')
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        sorted_df = df.sort_values(by='timestamp')
-        
-        for _, row in sorted_df.iterrows():
-            if row['type'] == 'PatientAdmission':
-                # Assuming additional_info contains comma-separated data
-                info_parts = row['additional_info'].split('. ')
-                name = info_parts[0].split(': ')[1]
-                dob = info_parts[1].split(': ')[1]
-                sex = info_parts[2].split(': ')[1]
-                PatientAdmissionMessage(row['mrn'], 
-                                        name, dob, 
-                                        sex, 
-                                        storage_manager)
-                
-            elif row['type'] == 'PatientDischarge':
-                PatientDischargeMessage(row['mrn'], 
-                                        storage_manager)
-                
-            elif row['type'] == 'TestResult':
-                info_parts = row['additional_info'].split('. ')
-                test_date = info_parts[0].split(': ')[1]
-                test_time = info_parts[1].split(': ')[1]
-                creatine_value = float(info_parts[2].split(': ')[1])
-                TestResultMessage(row['mrn'], 
-                                  test_date, 
-                                  test_time, 
-                                  creatine_value, 
-                                  storage_manager, 
-                                  trigger_aki_prediction=False)
+        # Check if the CSV file exists
+        if not os.path.exists(message_log_filepath):
+            # Create an empty CSV file
+            with open(message_log_filepath, 'w', newline=''):
+                pass
+        else:
+            # Read the history.csv file to populate the creatine_results_history dictionary
+            df = pd.read_csv(message_log_filepath)
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            sorted_df = df.sort_values(by='timestamp')
+            
+            for _, row in sorted_df.iterrows():
+                if row['type'] == 'PatientAdmission':
+                    # Assuming additional_info contains comma-separated data
+                    info_parts = row['additional_info'].split('. ')
+                    name = info_parts[0].split(': ')[1]
+                    dob = info_parts[1].split(': ')[1]
+                    sex = info_parts[2].split(': ')[1]
+                    self.add_admitted_patient_to_current_patients(PatientAdmissionMessage(row['mrn'], 
+                                            name, dob, 
+                                            sex, 
+                                            storage_manager))
+                    
+                elif row['type'] == 'PatientDischarge':
+                    self.storage_manager.add_test_result_to_current_patients(PatientDischargeMessage(row['mrn'], 
+                                            storage_manager))
+                    
+                elif row['type'] == 'TestResult':
+                    info_parts = row['additional_info'].split('. ')
+                    test_date = info_parts[0].split(': ')[1]
+                    test_time = info_parts[1].split(': ')[1]
+                    creatine_value = float(info_parts[2].split(': ')[1])
+                    self.remove_patient_from_current_patients(TestResultMessage(row['mrn'], 
+                                    test_date, 
+                                    test_time, 
+                                    creatine_value, 
+                                    storage_manager, 
+                                    trigger_aki_prediction=False))
 
 if __name__ == "__main__":
     storage_manager = StorageManager()
-    storage_manager.initialising_database()
+    storage_manager.initialise_database()
     
     print(storage_manager.creatine_results_history)
     
