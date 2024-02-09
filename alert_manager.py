@@ -3,8 +3,10 @@
 import urllib
 import urllib.error
 import urllib.request
-from config import PAGER_ADDRESS, PAGER_PORT
+import os
+#from config import PAGER_ADDRESS, PAGER_PORT
 
+PAGER_ADDRESS, PAGER_PORT = os.environ['PAGER_ADDRESS'].split(":")
 class AlertManager:
     """
     AlertManager handles the communication with the hospital's alerting system.

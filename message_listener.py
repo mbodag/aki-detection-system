@@ -5,10 +5,13 @@ import time
 from storage_manager import StorageManager
 from message_parser import MessageParser
 from aki_predictor import AKIPredictor
-from config import MLLP_PORT, MLLP_ADDRESS
+#from config import MLLP_PORT, MLLP_ADDRESS
+import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
 import pandas as pd
+
+MLLP_ADDRESS, MLLP_PORT = os.environ['MLLP_ADDRESS'].split(":")
 
 
 ACK = [
