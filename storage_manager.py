@@ -155,7 +155,7 @@ class StorageManager:
                     info_parts = row['additional_info'].split('. ')
                     test_date = info_parts[0].split(': ')[1]
                     test_time = info_parts[1].split(': ')[1]
-                    creatine_value = float(info_parts[2].split(': ')[1])
+                    creatine_value = info_parts[2].split(': ')[1]
                     self.add_test_result_to_current_patients(TestResultMessage(row['mrn'], 
                                     test_date, 
                                     test_time, 

@@ -19,7 +19,7 @@ ACK = [
 ]
 
 
-def initialise_system(message_log_filepath = MESSAGE_LOG_CSV_PATH):
+def initialise_system(message_log_filepath : str = MESSAGE_LOG_CSV_PATH):
     """
     Initialises the environment for the aki prediction system.
     """
@@ -34,7 +34,7 @@ def initialise_system(message_log_filepath = MESSAGE_LOG_CSV_PATH):
     return storage_manager, aki_predictor, message_parser, alert_manager
     
 
-def to_mllp(segments):
+def to_mllp(segments: list):
     MLLP_START_OF_BLOCK = 0x0b
     MLLP_END_OF_BLOCK = 0x1c
     MLLP_CARRIAGE_RETURN = 0x0d
@@ -46,7 +46,7 @@ def to_mllp(segments):
 def from_mllp(buffer):
     return str(buffer[1:-3], "ascii").split("\r") # Strip MLLP framing and final \r
 
-def listen_for_messages(storage_manager, aki_predictor, message_parser, alert_manager):
+def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredictor, message_parser: MessageParser, alert_manager: AlertManager):
     messages = []
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((MLLP_ADDRESS, MLLP_PORT))

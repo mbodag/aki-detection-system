@@ -6,13 +6,13 @@ import datetime
 import pickle
 import joblib
 import numpy as np
-
+from storage_manager import StorageManager
 NUM_CREATINE_RESULTS_USED = 5
 
 class AKIPredictor:
     """A class to predict Acute Kidney Injury (AKI) based on patient data."""
 
-    def __init__(self, storage_manager):
+    def __init__(self, storage_manager: StorageManager):
         """
         Initializes the AKIPredictor instance.
 
@@ -33,7 +33,7 @@ class AKIPredictor:
         return model
 
     @staticmethod
-    def determine_age(date_of_birth):
+    def determine_age(date_of_birth: str):
         """
         Determine the age of the patient.
 
@@ -47,7 +47,7 @@ class AKIPredictor:
         dob = datetime.datetime.strptime(date_of_birth, "%Y-%m-%d").date()
         return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
-    def predict_aki(self, mrn):
+    def predict_aki(self, mrn: str):
         """
         Predicts whether a patient is at risk of AKI based on their medical record number (MRN).
 

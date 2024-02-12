@@ -11,4 +11,4 @@ venv.bak/
 
 **/.DS_Store
 
-patient_data.db
+message_log.csv

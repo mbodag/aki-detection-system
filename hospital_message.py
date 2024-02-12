@@ -2,7 +2,7 @@ class PatientAdmissionMessage():
     """
     Handles patient admission messages.
     """
-    def __init__(self, mrn, name, date_of_birth, sex):
+    def __init__(self, mrn: str, name: str, date_of_birth: str, sex: str):
         self.mrn = mrn
         self.name = name
         self.date_of_birth = date_of_birth
@@ -13,14 +13,14 @@ class PatientDischargeMessage():
     """
     Handles patient discharge messages.
     """
-    def __init__(self, mrn):
+    def __init__(self, mrn: str):
         self.mrn = mrn
    
 class TestResultMessage():
     """
     Handles test result messages.
     """
-    def __init__(self, mrn, test_date, test_time, creatine_value, trigger_aki_prediction=True):
+    def __init__(self, mrn: str, test_date: str, test_time: str, creatine_value: float, trigger_aki_prediction: bool =True):
         self.mrn = mrn
         self.test_date = test_date
         self.test_time = test_time

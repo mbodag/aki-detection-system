@@ -34,7 +34,7 @@ class MessageParser:
             test_time = message[2].split("|")[7]
             test_day = test_time[:4]+"-"+test_time[4:6]+"-"+test_time[6:8]
             test_time = test_time[8:10]+":"+test_time[10:]
-            test_result = message[3].split("|")[5]
+            test_result = float(message[3].split("|")[5])
             message_object = TestResultMessage(mrn, test_day, test_time, test_result)
             
         elif message_type == 'ADT^A03': 
