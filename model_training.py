@@ -6,7 +6,15 @@ import pickle
 from automated_testing import automated_test
 
 # Read the data and name all the columns
-column_names = ['age', 'sex', 'aki','creatinine_date_0', 'creatinine_result_0','creatinine_date_1', 'creatinine_result_1','creatinine_date_2', 'creatinine_result_2','creatinine_date_3', 'creatinine_result_3','creatinine_date_4', 'creatinine_result_4','creatinine_date_5', 'creatinine_result_5','creatinine_date_6', 'creatinine_result_6','creatinine_date_7', 'creatinine_result_7','creatinine_date_8', 'creatinine_result_8']
+column_names = ['age', 'sex', 'aki','creatinine_date_0', 'creatinine_result_0',
+                'creatinine_date_1', 'creatinine_result_1',
+                'creatinine_date_2', 'creatinine_result_2',
+                'creatinine_date_3', 'creatinine_result_3',
+                'creatinine_date_4', 'creatinine_result_4',
+                'creatinine_date_5', 'creatinine_result_5',
+                'creatinine_date_6', 'creatinine_result_6',
+                'creatinine_date_7', 'creatinine_result_7',
+                'creatinine_date_8', 'creatinine_result_8']
 
 data = pd.read_csv('training.csv',header=None,skiprows = 1,names=column_names)
 

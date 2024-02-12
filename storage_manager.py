@@ -136,7 +136,7 @@ class StorageManager:
             df = pd.read_csv(message_log_filepath)
             print(df.head())
             df['timestamp'] = pd.to_datetime(df['timestamp'])
-            sorted_df = df.sort_values(by='timestamp')
+            sorted_df = df#.sort_values(by='timestamp')
             
             for _, row in sorted_df.iterrows():
                 if row['type'] == 'PatientAdmission':
@@ -147,45 +147,24 @@ class StorageManager:
                     sex = info_parts[2].split(': ')[1]
                     self.add_admitted_patient_to_current_patients(PatientAdmissionMessage(row['mrn'], 
                                             name, dob, 
-                                            sex, 
-                                            storage_manager))
-                    
+                                            sex))
                 elif row['type'] == 'PatientDischarge':
-                    self.storage_manager.add_test_result_to_current_patients(PatientDischargeMessage(row['mrn'], 
-                                            storage_manager))
+                    self.remove_patient_from_current_patients(PatientDischargeMessage(row['mrn']))
                     
                 elif row['type'] == 'TestResult':
                     info_parts = row['additional_info'].split('. ')
                     test_date = info_parts[0].split(': ')[1]
                     test_time = info_parts[1].split(': ')[1]
                     creatine_value = float(info_parts[2].split(': ')[1])
-                    self.remove_patient_from_current_patients(TestResultMessage(row['mrn'], 
+                    self.add_test_result_to_current_patients(TestResultMessage(row['mrn'], 
                                     test_date, 
                                     test_time, 
                                     creatine_value, 
-                                    storage_manager, 
                                     trigger_aki_prediction=False))
 
 if __name__ == "__main__":
     storage_manager = StorageManager()
     storage_manager.initialise_database()
-    
     print(storage_manager.creatine_results_history)
-    
-    # admission_msg = PatientAdmissionMessage(mrn='822825', name='John Doe', date_of_birth='1980-01-01', sex='M')   
-    # storage_manager.add_admitted_patient_to_dict(admission_msg)
-    # print(storage_manager.current_patients)
-    
-    # test_result_msg = TestResultMessage(mrn='822825', test_date='2021-01-01', test_time='08:00', creatine_value=1.2)
-    # storage_manager.add_test_result_to_database(test_result_msg)
-    
-    # discharge_msg = PatientDischargeMessage(mrn='822825')
-    # storage_manager.remove_patient_from_dict(discharge_msg.mrn)
-    # print(storage_manager.current_patients)
-    
-    # admission_msg = PatientAdmissionMessage(mrn='822825', name='John Doe', date_of_birth='1980-01-01', sex='M')   
-    # storage_manager.add_admitted_patient_to_dict(admission_msg)
-    # print(storage_manager.current_patients)
 
-    
     
