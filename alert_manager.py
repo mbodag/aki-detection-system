@@ -1,10 +1,7 @@
-# alert_manager.py
-
 import urllib
 import urllib.error
 import urllib.request
 import os
-#from config import PAGER_ADDRESS, PAGER_PORT
 
 PAGER_ADDRESS, PAGER_PORT = os.environ['PAGER_ADDRESS'].split(":")
 PAGER_PORT = int(PAGER_PORT)
@@ -24,5 +21,3 @@ class AlertManager:
         alert_data = bytes(patient_mrn, 'utf-8')
         r = urllib.request.urlopen(f"http://{PAGER_ADDRESS}:{PAGER_PORT}/page", data=alert_data)
         
-
-# Example usage:
