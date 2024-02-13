@@ -57,17 +57,14 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
                 break
             messages.append(from_mllp(buffer))
             message_object = message_parser.parse_message(from_mllp(buffer))
-            
-            # Be careful because we might store a message it then crash before acknowledging it (and so we'll receive it twice)
-            
-            # STORAGE STAGE
+                        
             if isinstance(message_object, PatientAdmissionMessage):
                 storage_manager.add_admitted_patient_to_current_patients(message_object)
             elif isinstance(message_object, TestResultMessage):
                 storage_manager.add_test_result_to_current_patients(message_object)
                 prediction_result = aki_predictor.predict_aki(message_object.mrn)
                 if prediction_result == 1:
-                    alert_manager.send_alert(message_object.mrn)        
+                    alert_manager.send_alert(message_object.mrn, message_object.timestamp)        
             elif isinstance(message_object, PatientDischargeMessage):
                 storage_manager.remove_patient_from_current_patients(message_object)
             

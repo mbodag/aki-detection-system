@@ -25,7 +25,7 @@ class StorageManager:
         # Entries are added when a patient is admitted and removed when a patient is discharged
         self.current_patients = dict()
     
-    def initialise_database(self, message_log_filepath = MESSAGE_LOG_CSV_PATH):
+    def initialise_database(self, message_log_filepath: str = MESSAGE_LOG_CSV_PATH):
         # Read the history.csv file to populate the creatine_results_history dictionary
         with open(HISTORY_CSV_PATH, 'r') as file:
             reader = csv.reader(file)
@@ -38,7 +38,7 @@ class StorageManager:
         
         self.instantiate_all_past_messages_from_log(message_log_filepath)
         
-    def add_admitted_patient_to_current_patients(self, admission_msg):
+    def add_admitted_patient_to_current_patients(self, admission_msg: PatientAdmissionMessage):
         """
         Adds an admitted patient's data to the current_patients dictionary.
         """
@@ -58,7 +58,7 @@ class StorageManager:
                 'creatinine_results': []
                 }
     
-    def add_test_result_to_current_patients(self, test_results_msg):
+    def add_test_result_to_current_patients(self, test_results_msg: TestResultMessage):
         """
         Appends a new test result for a patient in the in-memory dictionary.
         """
@@ -68,7 +68,7 @@ class StorageManager:
             raise ValueError(f"The lab results of patient {test_results_msg.mrn} cannot be processed," +
                              "since there is no record of an HL7 admission message for this patient.")
             
-    def remove_patient_from_current_patients(self, discharge_msg):
+    def remove_patient_from_current_patients(self, discharge_msg: PatientDischargeMessage):
         """
         Removes a patient's information from the in-memory storage.
         """
@@ -78,13 +78,13 @@ class StorageManager:
             raise ValueError(f"The discharge of patient {discharge_msg.mrn} cannot be processed," + 
                              "since there is no record of an HL7 admission message for this patient.")
         
-    def update_patients_data_in_creatine_results_history(self, discharge_msg):
+    def update_patients_data_in_creatine_results_history(self, discharge_msg: PatientDischargeMessage):
         """
         Updates the creatine results history for a discharged patient.
         """
         self.creatine_results_history[discharge_msg.mrn] = self.current_patients[discharge_msg.mrn]['creatinine_results']
     
-    def add_message_to_log_csv(self, message):
+    def add_message_to_log_csv(self, message: object):
         """
         Appends a message to message_log.csv.
         """
@@ -119,7 +119,7 @@ class StorageManager:
             writer = csv.DictWriter(csvfile, fieldnames=fields)
             writer.writerow(row_data)
 
-    def instantiate_all_past_messages_from_log(self, message_log_filepath):
+    def instantiate_all_past_messages_from_log(self, message_log_filepath: str):
         """
         Reads message_log.csv, sorts messages chronologically, and creates message object instances.
         """

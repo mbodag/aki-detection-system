@@ -5,10 +5,7 @@ class MessageParser:
     MessageParser is responsible for parsing HL7 messages.
     """
     
-    def __init__(self):
-        pass
-    
-    def parse_message(self, hl7_message_str):
+    def parse_message(self, hl7_message_str: str):
         """
         Parse an HL7 message string into an HL7 message object.
 
