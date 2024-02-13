@@ -123,9 +123,8 @@ class StorageManager:
         """
         Reads message_log.csv, sorts messages chronologically, and creates message object instances.
         """
-        # Check if the CSV file exists
+        # Check if the CSV file does not exist, we create it
         if not os.path.exists(message_log_filepath):
-            # Create an empty CSV file
             with open(message_log_filepath, 'w', newline='') as csvfile:
                 header_row = ['timestamp', 'type', 'mrn', 'additional_info']
                 writer = csv.DictWriter(csvfile, fieldnames=header_row)
@@ -133,12 +132,8 @@ class StorageManager:
                 pass
         else:
             # Read the history.csv file to populate the creatine_results_history dictionary
-            df = pd.read_csv(message_log_filepath)
-            print(df.head())
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
-            sorted_df = df#.sort_values(by='timestamp')
-            
-            for _, row in sorted_df.iterrows():
+            df = pd.read_csv(message_log_filepath)            
+            for _, row in df.iterrows():
                 if row['type'] == 'PatientAdmission':
                     # Assuming additional_info contains comma-separated data
                     info_parts = row['additional_info'].split('. ')
