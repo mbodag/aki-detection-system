@@ -15,15 +15,12 @@ class TestPatientDataPersistence(unittest.TestCase):
         and current_patients to simulate a fresh start for each test method.
         """
         self.storage_manager = StorageManager()
-        # Assuming the initialising_database method reads predefined data,
-        # but for the test, we'll work with an empty starting point.
-        self.storage_manager.creatine_results_history = {}
-        self.storage_manager.current_patients = {}
-
+    
+    
     def test_patient_data_persistence_across_admissions(self):
         """
-        Tests that a patient's lab test results are retained in the system even after discharge and are
-        accessible upon re-admission.
+        Tests that a patient's lab test results are retained in the system even
+        after discharge and are accessible upon re-admission.
         
         The test simulates the following sequence of events:
         1. A patient is admitted to the hospital.
@@ -31,8 +28,8 @@ class TestPatientDataPersistence(unittest.TestCase):
         3. The patient is discharged from the hospital.
         4. The patient is readmitted to the hospital.
         
-        The test verifies that the lab test results recorded during the first admission are still associated
-        with the patient after re-admission.
+        The test verifies that the lab test results recorded during the first 
+        admission are still associated with the patient after re-admission.
         """
         # Step 1: Admit the patient
         self.storage_manager.add_admitted_patient_to_current_patients(
@@ -46,6 +43,7 @@ class TestPatientDataPersistence(unittest.TestCase):
         
         # Verify test result is recorded
         self.assertIn(1.2, self.storage_manager.current_patients['001']['creatinine_results'])
+        self.assertTrue(self.storage_manager.current_patients['001'] == {'name': 'John Doe', 'date_of_birth': '2023-01-01', 'sex': 'M', 'creatinine_results': 1.2})
 
         # Step 3: Discharge the patient
         self.storage_manager.update_patients_data_in_creatine_results_history(

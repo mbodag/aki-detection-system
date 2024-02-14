@@ -1,3 +1,5 @@
+from typing import Union
+
 from hospital_message import PatientDischargeMessage, PatientAdmissionMessage, TestResultMessage
 
 class MessageParser:
@@ -5,7 +7,7 @@ class MessageParser:
     MessageParser is responsible for parsing HL7 messages.
     """
     
-    def parse_message(self, hl7_message_str: str):
+    def parse_message(self, hl7_message_str: str) -> Union[PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage]:
         """
         Parse an HL7 message string into an HL7 message object.
 

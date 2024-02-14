@@ -1,8 +1,23 @@
+from typing import Optional
+
 class PatientAdmissionMessage():
     """
     Handles patient admission messages.
     """
-    def __init__(self, mrn: str, name: str, date_of_birth: str, sex: str):
+    def __init__(self, mrn: str, name: str, date_of_birth: str, sex: str) -> None:
+        """
+        Initializes a patient admission message.
+
+        Args:
+            mrn (str): The medical record number of the patient.
+            name (str): The name of the patient.
+            date_of_birth (str): The date of birth of the patient, in the format
+                                    '2021-01-01'.
+            sex (str): The sex of the patient: 'M' or 'F'.
+
+        Returns:
+            None
+        """
         self.mrn = mrn
         self.name = name
         self.date_of_birth = date_of_birth
@@ -12,14 +27,35 @@ class PatientDischargeMessage():
     """
     Handles patient discharge messages.
     """
-    def __init__(self, mrn: str):
+    def __init__(self, mrn: str) -> None:
+        """
+        Initializes a patient discharge message.
+
+        Args:
+            mrn (str): The medical record number of the patient.
+
+        Returns:
+            None
+        """
         self.mrn = mrn
    
 class TestResultMessage():
     """
     Handles test result messages.
     """
-    def __init__(self, mrn: str, test_date: str, test_time: str, creatine_value: float, trigger_aki_prediction: bool =True):
+    def __init__(self, mrn: str, test_date: str, test_time: str, creatine_value: float) -> None:
+        """
+        Initializes a patient admission message.
+
+        Args:
+            mrn (str): The medical record number of the patient.
+            test_date (str): The date of the test, in the format '2021-01-01'.
+            test_time (str): The time of the test, in the format '08:00'.
+            creatine_value (float): The value of the creatine test.
+
+        Returns:
+            None
+        """
         self.mrn = mrn
         self.test_date = test_date
         self.test_time = test_time

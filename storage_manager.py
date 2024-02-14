@@ -2,7 +2,7 @@ import csv
 from datetime import datetime
 import pandas as pd
 import os
-from config import HISTORY_CSV_PATH, MESSAGE_LOG_CSV_PATH
+from config import HISTORY_CSV_PATH, MESSAGE_LOG_CSV_PATH, MESSAGE_LOG_CSV_FIELDS
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 
 class StorageManager:
@@ -86,10 +86,8 @@ class StorageManager:
     
     def add_message_to_log_csv(self, message: object):
         """
-        Appends a message to message_log.csv.
+        Appends a message as a single row to message_log.csv.
         """
-        # Define the fields for CSV logging
-        fields = ['timestamp', 'type', 'mrn', 'additional_info']
         
         # Prepare the message data based on the type of message
         if isinstance(message, PatientAdmissionMessage):
@@ -114,9 +112,9 @@ class StorageManager:
                 'additional_info': f"Test Date: {message.test_date}. Test Time: {message.test_time}. Creatine Value: {message.creatine_value}"
             }
         
-        # Append the data to the CSV file
-        with open('message_log.csv', 'a', newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fields)
+        # Append single row to the CSV file
+        with open('message_log.csv', 'ab', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=MESSAGE_LOG_CSV_FIELDS)
             writer.writerow(row_data)
 
     def instantiate_all_past_messages_from_log(self, message_log_filepath: str):
@@ -126,7 +124,7 @@ class StorageManager:
         # Check if the CSV file does not exist, we create it
         if not os.path.exists(message_log_filepath):
             with open(message_log_filepath, 'w', newline='') as csvfile:
-                header_row = ['timestamp', 'type', 'mrn', 'additional_info']
+                header_row = MESSAGE_LOG_CSV_FIELDS
                 writer = csv.DictWriter(csvfile, fieldnames=header_row)
                 writer.writeheader()  # Write the header row
                 pass
@@ -140,22 +138,23 @@ class StorageManager:
                     name = info_parts[0].split(': ')[1]
                     dob = info_parts[1].split(': ')[1]
                     sex = info_parts[2].split(': ')[1]
-                    self.add_admitted_patient_to_current_patients(PatientAdmissionMessage(row['mrn'], 
-                                            name, dob, 
-                                            sex))
+                    self.add_admitted_patient_to_current_patients(
+                        PatientAdmissionMessage(row['mrn'], name, dob, sex))
                 elif row['type'] == 'PatientDischarge':
-                    self.remove_patient_from_current_patients(PatientDischargeMessage(row['mrn']))
+                    self.remove_patient_from_current_patients(
+                        PatientDischargeMessage(row['mrn']))
                     
                 elif row['type'] == 'TestResult':
                     info_parts = row['additional_info'].split('. ')
                     test_date = info_parts[0].split(': ')[1]
                     test_time = info_parts[1].split(': ')[1]
                     creatine_value = info_parts[2].split(': ')[1]
-                    self.add_test_result_to_current_patients(TestResultMessage(row['mrn'], 
-                                    test_date, 
-                                    test_time, 
-                                    creatine_value, 
-                                    trigger_aki_prediction=False))
+                    self.add_test_result_to_current_patients(
+                        TestResultMessage(row['mrn'], 
+                                          test_date,
+                                          test_time, 
+                                          creatine_value, 
+                                          trigger_aki_prediction=False))
 
 if __name__ == "__main__":
     storage_manager = StorageManager()
