@@ -113,7 +113,7 @@ class StorageManager:
             }
         
         # Append single row to the CSV file
-        with open('message_log.csv', 'ab', newline='') as csvfile:
+        with open('message_log.csv', 'a', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=MESSAGE_LOG_CSV_FIELDS)
             writer.writerow(row_data)
 
@@ -153,8 +153,7 @@ class StorageManager:
                         TestResultMessage(row['mrn'], 
                                           test_date,
                                           test_time, 
-                                          creatine_value, 
-                                          trigger_aki_prediction=False))
+                                          creatine_value))
 
 if __name__ == "__main__":
     storage_manager = StorageManager()
