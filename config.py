@@ -7,7 +7,6 @@ MESSAGE_LOG_CSV_FIELDS = ['timestamp', 'type', 'mrn', 'additional_info']
 
 
 # Details for the message listener (e.g., IP and port for HL7 messages)
-
 MLLP_PORT = 8440
 PAGER_PORT = 8441
 

@@ -11,7 +11,7 @@ class TestPatientDataPersistence(unittest.TestCase):
         """
         Prepare resources and initial conditions for the tests.
         
-        Initialises a new StorageManager instance with empty dictionaries for creatine_results_history
+        Initialises a new StorageManager instance with empty dictionaries for creatinine_results_history
         and current_patients to simulate a fresh start for each test method.
         """
         self.storage_manager = StorageManager()
@@ -43,10 +43,10 @@ class TestPatientDataPersistence(unittest.TestCase):
         
         # Verify test result is recorded
         self.assertIn(1.2, self.storage_manager.current_patients['001']['creatinine_results'])
-        self.assertTrue(self.storage_manager.current_patients['001'] == {'name': 'John Doe', 'date_of_birth': '2023-01-01', 'sex': 'M', 'creatinine_results': 1.2})
+        self.assertTrue(self.storage_manager.current_patients['001'] == {'name': 'John Doe', 'date_of_birth': '1980-01-01', 'sex': 'M', 'creatinine_results': [1.2]})
 
         # Step 3: Discharge the patient
-        self.storage_manager.update_patients_data_in_creatine_results_history(
+        self.storage_manager.update_patients_data_in_creatinine_results_history(
             PatientDischargeMessage('001')
         )
         self.storage_manager.remove_patient_from_current_patients(PatientDischargeMessage('001'))
@@ -57,9 +57,9 @@ class TestPatientDataPersistence(unittest.TestCase):
         )
 
         # Verify the old lab test results are still accessible
-        self.assertIn('001', self.storage_manager.creatine_results_history)
-        self.assertTrue(len(self.storage_manager.creatine_results_history['001']) > 0)
-        self.assertIn(1.2, self.storage_manager.creatine_results_history['001'])
+        self.assertIn('001', self.storage_manager.creatinine_results_history)
+        self.assertTrue(len(self.storage_manager.creatinine_results_history['001']) > 0)
+        self.assertIn(1.2, self.storage_manager.creatinine_results_history['001'])
 
 if __name__ == '__main__':
     unittest.main()

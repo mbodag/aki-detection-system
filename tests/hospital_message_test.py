@@ -30,7 +30,7 @@ class HospitalMessageTest(unittest.TestCase):
         self.assertEqual(test_result_msg.mrn, '123')
         self.assertEqual(test_result_msg.test_date, '2021-01-01')
         self.assertEqual(test_result_msg.test_time, '08:00')
-        self.assertEqual(test_result_msg.creatine_value, 1.2)
+        self.assertEqual(test_result_msg.creatinine_value, 1.2)
         self.storage_manager.add_message_to_log_csv.assert_called_once_with(test_result_msg)
         self.storage_manager.add_test_result_to_current_patients.assert_called_once_with(test_result_msg)
         self.aki_predictor.predict_aki.assert_called_once_with(test_result_msg)

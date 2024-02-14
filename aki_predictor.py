@@ -7,7 +7,7 @@ import pickle
 import joblib
 import numpy as np
 from storage_manager import StorageManager
-NUM_CREATINE_RESULTS_USED = 5
+NUM_CREATININE_RESULTS_USED = 5
 
 class AKIPredictor:
     """A class to predict Acute Kidney Injury (AKI) based on patient data."""
@@ -69,7 +69,7 @@ class AKIPredictor:
         creatinine_results = patient_data['creatinine_results']
 
         # Number of creatinine results to use in the model
-        X_train_creatinine_columns = NUM_CREATINE_RESULTS_USED
+        X_train_creatinine_columns = NUM_CREATININE_RESULTS_USED
 
         # Adjust creatinine results to match model input requirements
         if len(creatinine_results) > X_train_creatinine_columns:

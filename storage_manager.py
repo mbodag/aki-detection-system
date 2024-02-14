@@ -13,11 +13,11 @@ class StorageManager:
         """
         Initializes the storage manager by setting up the database connection and sessionmaker.
         """
-        # Stores creatine results for all patients
+        # Stores creatinine results for all patients
         # The file history.csv is imported and the data is stored in this dictionary
-        # The key is the MRN and the value is a list of creatine results as floats
-        # We only write to the creatine_results_history when a patient is discharged
-        self.creatine_results_history = dict()
+        # The key is the MRN and the value is a list of creatinine results as floats
+        # We only write to the creatinine_results_history when a patient is discharged
+        self.creatinine_results_history = dict()
         
         
         # Stores data for patients currently admitted in the hospital
@@ -26,15 +26,15 @@ class StorageManager:
         self.current_patients = dict()
     
     def initialise_database(self, message_log_filepath: str = MESSAGE_LOG_CSV_PATH):
-        # Read the history.csv file to populate the creatine_results_history dictionary
+        # Read the history.csv file to populate the creatinine_results_history dictionary
         with open(HISTORY_CSV_PATH, 'r') as file:
             reader = csv.reader(file)
             next(reader, None)  # Skip the header row
             for row in reader: 
                 mrn = row[0]
-                creatine_results = [row[col] for col in range(2, len(row), 2) if row[col] != ""]
-                creatine_results = list(map(float, creatine_results))
-                self.creatine_results_history[mrn] = creatine_results
+                creatinine_results = [row[col] for col in range(2, len(row), 2) if row[col] != ""]
+                creatinine_results = list(map(float, creatinine_results))
+                self.creatinine_results_history[mrn] = creatinine_results
         
         self.instantiate_all_past_messages_from_log(message_log_filepath)
         
@@ -42,12 +42,12 @@ class StorageManager:
         """
         Adds an admitted patient's data to the current_patients dictionary.
         """
-        if admission_msg.mrn in self.creatine_results_history:
+        if admission_msg.mrn in self.creatinine_results_history:
             self.current_patients[admission_msg.mrn] = {
                 'name': admission_msg.name,
                 'date_of_birth': admission_msg.date_of_birth,
                 'sex': admission_msg.sex,
-                'creatinine_results': self.creatine_results_history[admission_msg.mrn]
+                'creatinine_results': self.creatinine_results_history[admission_msg.mrn]
                 }
                 
         else:
@@ -63,7 +63,7 @@ class StorageManager:
         Appends a new test result for a patient in the in-memory dictionary.
         """
         if test_results_msg.mrn in self.current_patients:
-            self.current_patients[test_results_msg.mrn]['creatinine_results'].append(float(test_results_msg.creatine_value))
+            self.current_patients[test_results_msg.mrn]['creatinine_results'].append(float(test_results_msg.creatinine_value))
         else:
             raise ValueError(f"The lab results of patient {test_results_msg.mrn} cannot be processed," +
                              "since there is no record of an HL7 admission message for this patient.")
@@ -78,11 +78,11 @@ class StorageManager:
             raise ValueError(f"The discharge of patient {discharge_msg.mrn} cannot be processed," + 
                              "since there is no record of an HL7 admission message for this patient.")
         
-    def update_patients_data_in_creatine_results_history(self, discharge_msg: PatientDischargeMessage):
+    def update_patients_data_in_creatinine_results_history(self, discharge_msg: PatientDischargeMessage):
         """
-        Updates the creatine results history for a discharged patient.
+        Updates the creatinine results history for a discharged patient.
         """
-        self.creatine_results_history[discharge_msg.mrn] = self.current_patients[discharge_msg.mrn]['creatinine_results']
+        self.creatinine_results_history[discharge_msg.mrn] = self.current_patients[discharge_msg.mrn]['creatinine_results']
     
     def add_message_to_log_csv(self, message: object):
         """
@@ -109,7 +109,7 @@ class StorageManager:
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'type': 'TestResult',
                 'mrn': message.mrn,
-                'additional_info': f"Test Date: {message.test_date}. Test Time: {message.test_time}. Creatine Value: {message.creatine_value}"
+                'additional_info': f"Test Date: {message.test_date}. Test Time: {message.test_time}. Creatinine Value: {message.creatinine_value}"
             }
         
         # Append single row to the CSV file
@@ -129,7 +129,7 @@ class StorageManager:
                 writer.writeheader()  # Write the header row
                 pass
         else:
-            # Read the history.csv file to populate the creatine_results_history dictionary
+            # Read the history.csv file to populate the creatinine_results_history dictionary
             df = pd.read_csv(message_log_filepath)            
             for _, row in df.iterrows():
                 if row['type'] == 'PatientAdmission':
@@ -148,16 +148,16 @@ class StorageManager:
                     info_parts = row['additional_info'].split('. ')
                     test_date = info_parts[0].split(': ')[1]
                     test_time = info_parts[1].split(': ')[1]
-                    creatine_value = info_parts[2].split(': ')[1]
+                    creatinine_value = info_parts[2].split(': ')[1]
                     self.add_test_result_to_current_patients(
                         TestResultMessage(row['mrn'], 
                                           test_date,
                                           test_time, 
-                                          creatine_value))
+                                          creatinine_value))
 
 if __name__ == "__main__":
     storage_manager = StorageManager()
     storage_manager.initialise_database()
-    print(storage_manager.creatine_results_history)
+    print(storage_manager.creatinine_results_history)
 
     
