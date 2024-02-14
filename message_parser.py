@@ -15,7 +15,7 @@ class MessageParser:
         hl7_message_str (str): A string representation of an HL7 message.
 
         Returns:
-        HL7Message: An object representing the parsed HL7 message.
+        Instance of PatientAdmissionMessage, TestResultMessage, or PatientDischargeMessage.
         """
         message = hl7_message_str
         message_type = message[0].split("|")[8]

@@ -12,7 +12,7 @@ NUM_CREATININE_RESULTS_USED = 5
 class AKIPredictor:
     """A class to predict Acute Kidney Injury (AKI) based on patient data."""
 
-    def __init__(self, storage_manager: StorageManager):
+    def __init__(self, storage_manager: StorageManager) -> None:
         """
         Initializes the AKIPredictor instance.
 
@@ -33,7 +33,7 @@ class AKIPredictor:
         return model
 
     @staticmethod
-    def determine_age(date_of_birth: str):
+    def determine_age(date_of_birth: str) -> int:
         """
         Determine the age of the patient.
 
@@ -45,9 +45,9 @@ class AKIPredictor:
         """
         today = datetime.date.today()
         dob = datetime.datetime.strptime(date_of_birth, "%Y-%m-%d").date()
-        return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        return int(today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day)))
 
-    def predict_aki(self, mrn: str):
+    def predict_aki(self, mrn: str) -> int:
         """
         Predicts whether a patient is at risk of AKI based on their medical record number (MRN).
 

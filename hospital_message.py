@@ -22,7 +22,7 @@ class PatientAdmissionMessage():
         self.name = name
         self.date_of_birth = date_of_birth
         self.sex = sex
-       
+           
 class PatientDischargeMessage():
     """
     Handles patient discharge messages.

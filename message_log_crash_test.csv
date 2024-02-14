@@ -1,0 +1,10 @@
+timestamp,type,mrn,additional_info
+2024-02-14 20:16:28,PatientAdmission,123,Name: John Doe. DOB: 1990-01-01. Sex: M
+2024-02-14 20:16:28,PatientAdmission,124,Name: Jane Doe. DOB: 1991-01-01. Sex: F
+2024-02-14 20:16:28,PatientAdmission,822825,Name: John Smith. DOB: 1992-01-01. Sex: M
+2024-02-14 20:16:28,PatientAdmission,172293,Name: Jane Smith. DOB: 1993-01-01. Sex: F
+2024-02-14 20:16:28,TestResult,124,Test Date: 2021-01-01. Test Time: 08:00. Creatinine Value: 1.2
+2024-02-14 20:16:28,TestResult,822825,Test Date: 2021-01-01. Test Time: 08:00. Creatinine Value: 101.2
+2024-02-14 20:16:28,TestResult,172293,Test Date: 2021-01-01. Test Time: 08:00. Creatinine Value: 56.4
+2024-02-14 20:16:28,TestResult,172293,Test Date: 2021-01-01. Test Time: 08:00. Creatinine Value: 74.2
+2024-02-14 20:16:28,PatientDischarge,123,

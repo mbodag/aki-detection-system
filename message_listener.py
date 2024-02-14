@@ -23,8 +23,8 @@ def initialise_system(message_log_filepath : str = MESSAGE_LOG_CSV_PATH):
     """
     Initialises the environment for the aki prediction system.
     """
-    storage_manager = StorageManager()
-    storage_manager.initialise_database(message_log_filepath = message_log_filepath)
+    storage_manager = StorageManager(message_log_filepath = message_log_filepath)
+    storage_manager.initialise_database()
     
     aki_predictor = AKIPredictor(storage_manager)
 
@@ -47,6 +47,20 @@ def from_mllp(buffer):
     return str(buffer[1:-3], "ascii").split("\r") # Strip MLLP framing and final \r
 
 def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredictor, message_parser: MessageParser, alert_manager: AlertManager):
+    """
+    This function listens for incoming MLLP messages, stores them, and sends AKI alerts if necessary.
+
+    It continuously checks for new messages and processes them as they arrive. 
+    The processing includes parsing the message, performing necessary actions based on the message content, 
+    and sending an acknowledgment back to the sender.
+
+    Raises:
+        ConnectionError: If the function cannot establish a connection to the message source.
+        MessageError: If there's an error in processing the message.
+
+    Note:
+        This function runs indefinitely until an external signal interrupts it or the program is terminated.
+    """
     messages = []
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((MLLP_ADDRESS, MLLP_PORT))
@@ -72,6 +86,7 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
             ack = to_mllp(ACK)
             s.sendall(ack[0:len(ack)//2])
             s.sendall(ack[len(ack)//2:])
+            
 if __name__ == '__main__':
     storage_manager, aki_predictor, message_parser, alert_manager = initialise_system()
     listen_for_messages(storage_manager, aki_predictor, message_parser, alert_manager)
