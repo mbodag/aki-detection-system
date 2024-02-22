@@ -29,7 +29,7 @@ spec:
       containers:
       - name: aki-detection
         image: imperialswemlsspring2024.azurecr.io/coursework4-emilia
-        command: ["/coursework3/coursework3.py"]
+        command: ["python3", "/main/message_listener.py"]
         args:
         - "--history=/hospital-history/history.csv"
         env:
