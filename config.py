@@ -1,5 +1,5 @@
 # The path to the CSV file where historical patient data is stored.
-HISTORY_CSV_PATH = 'data/history.csv'
+HISTORY_CSV_PATH = '/data/history.csv'
 MESSAGE_LOG_CSV_PATH = 'message_log.csv'
 
 # These act as the header row for the MESSAGE_LOG CSV file
