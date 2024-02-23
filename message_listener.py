@@ -1,7 +1,7 @@
 
 import socket
 from storage_manager import StorageManager
-from message_parser import MessageParser
+from message_parser import parse_message
 from aki_predictor import AKIPredictor
 #from config import MLLP_PORT, MLLP_ADDRESS
 import os
@@ -28,10 +28,9 @@ def initialise_system(message_log_filepath : str = MESSAGE_LOG_CSV_PATH):
     
     aki_predictor = AKIPredictor(storage_manager)
 
-    message_parser = MessageParser()
     alert_manager = AlertManager()
     
-    return storage_manager, aki_predictor, message_parser, alert_manager
+    return storage_manager, aki_predictor, alert_manager
     
 
 def to_mllp(segments: list):
@@ -46,7 +45,7 @@ def to_mllp(segments: list):
 def from_mllp(buffer):
     return str(buffer[1:-3], "ascii").split("\r") # Strip MLLP framing and final \r
 
-def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredictor, message_parser: MessageParser, alert_manager: AlertManager):
+def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredictor, alert_manager: AlertManager):
     """
     This function listens for incoming MLLP messages, stores them, and sends AKI alerts if necessary.
 
@@ -70,7 +69,7 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
             if len(buffer) == 0:
                 break
             messages.append(from_mllp(buffer))
-            message_object = message_parser.parse_message(from_mllp(buffer))
+            message_object = parse_message(from_mllp(buffer))
                         
             if isinstance(message_object, PatientAdmissionMessage):
                 storage_manager.add_admitted_patient_to_current_patients(message_object)
@@ -88,5 +87,5 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
             s.sendall(ack[len(ack)//2:])
             
 if __name__ == '__main__':
-    storage_manager, aki_predictor, message_parser, alert_manager = initialise_system()
-    listen_for_messages(storage_manager, aki_predictor, message_parser, alert_manager)
+    storage_manager, aki_predictor, alert_manager = initialise_system()
+    listen_for_messages(storage_manager, aki_predictor, alert_manager)
