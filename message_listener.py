@@ -1,13 +1,14 @@
 
 import socket
 from storage_manager import StorageManager
-from message_parser import MessageParser
+from message_parser import parse_message
 from aki_predictor import AKIPredictor
 #from config import MLLP_PORT, MLLP_ADDRESS
 import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
 import pandas as pd
+from datetime import datetime
 from config import MESSAGE_LOG_CSV_PATH
 
 MLLP_ADDRESS, MLLP_PORT = os.environ['MLLP_ADDRESS'].split(":")
@@ -50,15 +51,14 @@ def initialise_system(message_log_filepath : str = MESSAGE_LOG_CSV_PATH):
     """
     Initialises the environment for the aki prediction system.
     """
-    storage_manager = StorageManager()
-    storage_manager.initialise_database(message_log_filepath = message_log_filepath)
+    storage_manager = StorageManager(message_log_filepath = message_log_filepath)
+    storage_manager.initialise_database()
     
     aki_predictor = AKIPredictor(storage_manager)
 
-    message_parser = MessageParser()
     alert_manager = AlertManager()
     
-    return storage_manager, aki_predictor, message_parser, alert_manager
+    return storage_manager, aki_predictor, alert_manager
     
 
 def to_mllp(segments: list):
@@ -74,11 +74,24 @@ def to_mllp(segments: list):
 def from_mllp(buffer):
     return str(buffer[:-1], "ascii").split("\r") # Strip MLLP framing and final \r
 
-def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredictor, message_parser: MessageParser, alert_manager: AlertManager):
-    i = 0
-    buffer = b""
+def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredictor, alert_manager: AlertManager):
+    """
+    This function listens for incoming MLLP messages, stores them, and sends AKI alerts if necessary.
+
+    It continuously checks for new messages and processes them as they arrive. 
+    The processing includes parsing the message, performing necessary actions based on the message content, 
+    and sending an acknowledgment back to the sender.
+
+    Raises:
+        ConnectionError: If the function cannot establish a connection to the message source.
+        MessageError: If there's an error in processing the message.
+
+    Note:
+        This function runs indefinitely until an external signal interrupts it or the program is terminated.
+    """
     messages = []
     source = f"{MLLP_ADDRESS}:{MLLP_PORT}"
+    buffer = b""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((MLLP_ADDRESS, MLLP_PORT))
         print(f"Listening for HL7 messages on '{MLLP_ADDRESS}':{MLLP_PORT}")
@@ -92,7 +105,7 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
                 received, buffer = parse_mllp_messages(buffer, source)
     
             messages.append(from_mllp(received[0]))
-            message_object = message_parser.parse_message(from_mllp(received[0]))
+            message_object = parse_message(from_mllp(received[0]))
             if isinstance(message_object, PatientAdmissionMessage):
                 storage_manager.add_admitted_patient_to_current_patients(message_object)
             elif isinstance(message_object, TestResultMessage):
@@ -107,12 +120,13 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
             storage_manager.add_message_to_log_csv(message_object)
 
             ACK = [
-    f"MSH|^~\&|||||44444444||ACK|||2.5",
+    f"MSH|^~\&|||||{datetime.now().strftime('%Y%M%D%H%M%S')}||ACK|||2.5",
     "MSA|AA",
 ]
             ack = to_mllp(ACK)
             s.sendall(ack[0:len(ack)//2])
             s.sendall(ack[len(ack)//2:])
+            
 if __name__ == '__main__':
-    storage_manager, aki_predictor, message_parser, alert_manager = initialise_system()
-    listen_for_messages(storage_manager, aki_predictor, message_parser, alert_manager)
+    storage_manager, aki_predictor, alert_manager = initialise_system()
+    listen_for_messages(storage_manager, aki_predictor, alert_manager)
