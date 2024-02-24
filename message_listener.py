@@ -11,9 +11,14 @@ import pandas as pd
 from datetime import datetime
 from config import MESSAGE_LOG_CSV_PATH
 
-from prometheus_client import Counter, start_http_server
+from prometheus_client import Gauge, Counter, start_http_server
 
-prometheus_messages = Counter("messages_received", "Number  of messages received")
+p_overall_messages_received = Gauge("overall_messages_received", "Number of overall messages received")
+p_overall_messages_acknowledged = Counter("overall_messages_acknowledged", "Number of overall messages received")
+p_admission_messages = Counter("admission_messages_received", "Number of admission messages received")
+p_discharge_messages = Counter("discharge_messages_received", "Number of discharge messages received")
+p_test_result_messages = Counter("test_result_messages_received", "Number of test result messages received")
+p_positive_aki_predictions = Counter("positive_aki_predictions", "Number of positive aki predictions")
 start_http_server(PROMETHEUS_PORT)
 
 
@@ -109,15 +114,20 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
     
             messages.append(from_mllp(received[0]))
             message_object = parse_message(from_mllp(received[0]))
+            p_overall_messages_received.inc()
             if isinstance(message_object, PatientAdmissionMessage):
                 storage_manager.add_admitted_patient_to_current_patients(message_object)
+                p_admission_messages.inc()
             elif isinstance(message_object, TestResultMessage):
                 storage_manager.add_test_result_to_current_patients(message_object)
                 prediction_result = aki_predictor.predict_aki(message_object.mrn)
+                p_test_result_messages.inc()
                 if prediction_result == 1:
                     alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
+                    p_positive_aki_predictions.inc()
             elif isinstance(message_object, PatientDischargeMessage):
                 storage_manager.remove_patient_from_current_patients(message_object)
+                p_discharge_messages.inc()
             
 
             storage_manager.add_message_to_log_csv(message_object)
@@ -129,7 +139,7 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
             ack = to_mllp(ACK)
             s.sendall(ack[0:len(ack)//2])
             s.sendall(ack[len(ack)//2:])
-            prometheus_messages.inc()
+            p_overall_messages_acknowledged.inc()
 
             
 if __name__ == '__main__':
