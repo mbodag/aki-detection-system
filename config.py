@@ -19,4 +19,3 @@ if os.environ.get('PAGER_ADDRESS') is None:
     PAGER_PORT = 8441
 else:
     PAGER_ADDRESS, PAGER_PORT = os.environ.get['PAGER_ADDRESS'].split(":")[0]
-
