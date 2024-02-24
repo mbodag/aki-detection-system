@@ -3,7 +3,7 @@ import socket
 from storage_manager import StorageManager
 from message_parser import parse_message
 from aki_predictor import AKIPredictor
-from config import MLLP_PORT, MLLP_ADDRESS
+from config import MLLP_PORT, MLLP_ADDRESS, PROMETHEUS_PORT
 import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
@@ -11,10 +11,10 @@ import pandas as pd
 from datetime import datetime
 from config import MESSAGE_LOG_CSV_PATH
 
-# from prometheus_client import Counter, start_http_server
+from prometheus_client import Counter, start_http_server
 
-# messages = Counter("messages_received", "Number  of messages received")
-# start_http_server(8012)
+prometheus_messages = Counter("messages_received", "Number  of messages received")
+start_http_server(PROMETHEUS_PORT)
 
 
 ACK = [
@@ -129,7 +129,7 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
             ack = to_mllp(ACK)
             s.sendall(ack[0:len(ack)//2])
             s.sendall(ack[len(ack)//2:])
-            # messages.inc()
+            prometheus_messages.inc()
 
             
 if __name__ == '__main__':
