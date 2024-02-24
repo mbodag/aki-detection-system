@@ -2,7 +2,8 @@ import csv
 from datetime import datetime
 import pandas as pd
 import os
-from config import HISTORY_CSV_PATH, MESSAGE_LOG_CSV_PATH, MESSAGE_LOG_CSV_FIELDS
+import argparse
+from config import MESSAGE_LOG_CSV_PATH, MESSAGE_LOG_CSV_FIELDS
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 
 class StorageManager:
@@ -30,9 +31,9 @@ class StorageManager:
         self.message_log_filepath = message_log_filepath
         self.fields = fields
     
-    def initialise_database(self, wipe_past_message_log: bool = False):
+    def initialise_database(self, history_csv_path, wipe_past_message_log: bool = False):
         # Read the history.csv file to populate the creatinine_results_history dictionary
-        with open(HISTORY_CSV_PATH, 'r') as file:
+        with open(history_csv_path, 'r') as file:
             reader = csv.reader(file)
             next(reader, None)  # Skip the header row
             for row in reader: 

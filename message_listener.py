@@ -3,13 +3,13 @@ import socket
 from storage_manager import StorageManager
 from message_parser import parse_message
 from aki_predictor import AKIPredictor
-from config import MLLP_PORT, MLLP_ADDRESS, PROMETHEUS_PORT
+from config import MLLP_PORT, MLLP_ADDRESS, PROMETHEUS_PORT, MESSAGE_LOG_CSV_PATH
 import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
 import pandas as pd
 from datetime import datetime
-from config import MESSAGE_LOG_CSV_PATH
+import argparse
 
 from prometheus_client import Gauge, Counter, start_http_server
 
@@ -60,7 +60,7 @@ def initialise_system(message_log_filepath : str = MESSAGE_LOG_CSV_PATH):
     Initialises the environment for the aki prediction system.
     """
     storage_manager = StorageManager(message_log_filepath = message_log_filepath)
-    storage_manager.initialise_database()
+    storage_manager.initialise_database(history_csv_path=HISTORY_CSV_PATH)
     
     aki_predictor = AKIPredictor(storage_manager)
 
@@ -143,5 +143,12 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
 
             
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='AKI Prediction System')
+    parser.add_argument('--history-dir', type=str, help='Path to history CSV file')
+    args = parser.parse_args()
+
+    if args.history_dir:
+        HISTORY_CSV_PATH = args.history_dir
+
     storage_manager, aki_predictor, alert_manager = initialise_system()
     listen_for_messages(storage_manager, aki_predictor, alert_manager)
