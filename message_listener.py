@@ -149,6 +149,8 @@ if __name__ == '__main__':
 
     if args.history_dir:
         HISTORY_CSV_PATH = args.history_dir
+    else:
+        from config import HISTORY_CSV_PATH
 
     storage_manager, aki_predictor, alert_manager = initialise_system()
     listen_for_messages(storage_manager, aki_predictor, alert_manager)
