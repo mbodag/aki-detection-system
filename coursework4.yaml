@@ -29,7 +29,7 @@ spec:
       containers:
       - name: aki-detection
         image: imperialswemlsspring2024.azurecr.io/coursework4-emilia
-        command: ["python3", "/main/message_listener.py"]
+        command: ["python3", "/coursework3/coursework3.py"]
         args:
         - "--history=/hospital-history/history.csv"
         env:
@@ -37,6 +37,9 @@ spec:
           value: emilia-simulator.hospital:8440
         - name: PAGER_ADDRESS
           value: emilia-simulator.hospital:8441
+        ports:
+        - name: http
+          containerPort: 8000
         volumeMounts:
           - mountPath: "/hospital-history"
             name: hospital-history
