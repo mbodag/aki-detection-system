@@ -7,6 +7,8 @@ MESSAGE_LOG_CSV_PATH = '/state/message_log.csv'
 # These act as the header row for the MESSAGE_LOG CSV file
 MESSAGE_LOG_CSV_FIELDS = ['timestamp', 'type', 'mrn', 'additional_info']
 
+MODEL_PATH = "model/model.jl"
+
 # Details for the message listener (e.g., IP and port for HL7 messages)
 if os.environ.get('MLLP_ADDRESS') is None:
     MLLP_ADDRESS = "localhost"

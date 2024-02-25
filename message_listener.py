@@ -1,17 +1,16 @@
+import threading
 import signal
-import sys
 import socket
 import threading
+import sys
 from storage_manager import StorageManager
 from message_parser import parse_message
-from aki_predictor import AKIPredictor
 from config import MLLP_PORT, MLLP_ADDRESS, PROMETHEUS_PORT, MESSAGE_LOG_CSV_PATH
 import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
-# import simulator
 import pandas as pd
-from datetime import datetime
+import datetime
 import argparse
 
 from prometheus_client import Gauge, Counter, start_http_server
@@ -22,19 +21,21 @@ p_admission_messages = Counter("admission_messages_received", "Number of admissi
 p_discharge_messages = Counter("discharge_messages_received", "Number of discharge messages received")
 p_test_result_messages = Counter("test_result_messages_received", "Number of test result messages received")
 p_positive_aki_predictions = Counter("positive_aki_predictions", "Number of positive aki predictions")
-p_connection_closed_error = Counter("connection_closed_error", "Number of connection closed errors")
+p_aki_predictions_under_2_s = Counter("aki_under_2_s", "Number of aki predictions under 2 seconds")
+p_aki_predictions_under_3_s = Counter("aki_under_3_s", "Number of aki predictions under 3 seconds")
+p_aki_predictions_over_3_s = Counter("aki_over_3_s", "Number of aki predictions OVER 3 seconds")
+p_connection_closed_error = Counter("connection_closed_error", "Number of times socket connection closed")
 start_http_server(PROMETHEUS_PORT)
 
 shutdown_event = threading.Event()
 
-# def shutdown():
-#     shutdown_event.set()
-#     print("pager: graceful shutdown")
-#     pager.shutdown()
-# signal.signal(signal.SIGTERM, lambda *args: shutdown())
+def shutdown(s):
+    shutdown_event.set()
+    print("graceful shutdown")
+    # s.close()
+    sys.exit(0)
 
-# MLLP_ADDRESS, MLLP_PORT = os.environ['MLLP_ADDRESS'].split(":")
-# MLLP_PORT = int(MLLP_PORT)
+# signal.signal(signal.SIGTERM, lambda *args: shutdown())
 
 ACK = [
     "MSH|^~\&|||||20240129093837||ACK|||2.5",
@@ -75,12 +76,10 @@ def initialise_system(message_log_filepath : str = MESSAGE_LOG_CSV_PATH):
     """
     storage_manager = StorageManager(message_log_filepath = message_log_filepath)
     storage_manager.initialise_database(history_csv_path=HISTORY_CSV_PATH)
-    
-    aki_predictor = AKIPredictor(storage_manager)
 
     alert_manager = AlertManager()
     
-    return storage_manager, aki_predictor, alert_manager
+    return storage_manager, alert_manager
     
 
 def to_mllp(segments: list):
@@ -96,7 +95,7 @@ def to_mllp(segments: list):
 def from_mllp(buffer):
     return str(buffer[:-1], "ascii").split("\r") # Strip MLLP framing and final \r
 
-def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredictor, alert_manager: AlertManager):
+def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertManager):
     """
     This function listens for incoming MLLP messages, stores them, and sends AKI alerts if necessary.
 
@@ -120,6 +119,7 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
         while True:    
             received = []
             while len(received) < 1:
+                time_message_received = datetime.datetime.now()
                 r = s.recv(1024)
                 if len(r) == 0:
                     p_connection_closed_error.inc()
@@ -130,31 +130,47 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
             messages.append(from_mllp(received[0]))
             message_object = parse_message(from_mllp(received[0]))
             p_overall_messages_received.inc()
+            
             if isinstance(message_object, PatientAdmissionMessage):
                 storage_manager.add_admitted_patient_to_current_patients(message_object)
                 p_admission_messages.inc()
+                
             elif isinstance(message_object, TestResultMessage):
                 storage_manager.add_test_result_to_current_patients(message_object)
-                prediction_result = aki_predictor.predict_aki(message_object.mrn)
-                p_test_result_messages.inc()
-                if prediction_result == 1:
-                    alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
-                    p_positive_aki_predictions.inc()
+                # If hospital staff has been previously paged about AKI in 
+                # regards to that patient, do not do that again
+                if storage_manager.no_positive_aki_prediction_so_far(message_object.mrn):
+                    prediction_result = storage_manager.predict_aki(message_object.mrn)
+                    p_test_result_messages.inc()
+                    if prediction_result == 1:
+                        alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
+                        storage_manager.update_positive_aki_prediction_to_current_patients(message_object.mrn)
+                        time_latency_aki_paging = datetime.datetime.now() - time_message_received
+                        if time_latency_aki_paging.total_seconds() < 2:
+                            p_aki_predictions_under_2_s.inc()
+                        elif time_latency_aki_paging.total_seconds() < 3:
+                            p_aki_predictions_under_3_s.inc()
+                        else:
+                            p_aki_predictions_over_3_s.inc()
+                        p_positive_aki_predictions.inc()
+                        
             elif isinstance(message_object, PatientDischargeMessage):
                 storage_manager.remove_patient_from_current_patients(message_object)
                 p_discharge_messages.inc()
             
-
+            
             storage_manager.add_message_to_log_csv(message_object)
 
             ACK = [
-    f"MSH|^~\&|||||{datetime.now().strftime('%Y%M%D%H%M%S')}||ACK|||2.5",
+    f"MSH|^~\&|||||{datetime.datetime.now().strftime('%Y%M%D%H%M%S')}||ACK|||2.5",
     "MSA|AA",
 ]
             ack = to_mllp(ACK)
             s.sendall(ack[0:len(ack)//2])
             s.sendall(ack[len(ack)//2:])
             p_overall_messages_acknowledged.inc()
+            signal.signal(signal.SIGTERM, lambda *args: shutdown(s))
+
 
             
 if __name__ == '__main__':
@@ -167,5 +183,5 @@ if __name__ == '__main__':
     else:
         from config import HISTORY_CSV_PATH
 
-    storage_manager, aki_predictor, alert_manager = initialise_system()
-    listen_for_messages(storage_manager, aki_predictor, alert_manager)
+    storage_manager, alert_manager = initialise_system()
+    listen_for_messages(storage_manager, alert_manager)

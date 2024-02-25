@@ -1,9 +1,11 @@
 import csv
-from datetime import datetime
+import datetime
 import pandas as pd
 import os
 import argparse
-from config import MESSAGE_LOG_CSV_PATH, MESSAGE_LOG_CSV_FIELDS
+import joblib
+import numpy as np
+from config import MESSAGE_LOG_CSV_PATH, MESSAGE_LOG_CSV_FIELDS, MODEL_PATH
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 
 class StorageManager:
@@ -12,7 +14,8 @@ class StorageManager:
     """
     def __init__(self,
                  fields: list = MESSAGE_LOG_CSV_FIELDS, 
-                 message_log_filepath: str = MESSAGE_LOG_CSV_PATH):
+                 message_log_filepath: str = MESSAGE_LOG_CSV_PATH,
+                 model_path: str = MODEL_PATH):
         """
         Initializes the storage manager by setting up the database connection and sessionmaker.
         """
@@ -30,6 +33,8 @@ class StorageManager:
         
         self.message_log_filepath = message_log_filepath
         self.fields = fields
+        
+        self.model = self.load_model(model_path)
     
     def initialise_database(self, history_csv_path, wipe_past_message_log: bool = False):
         # Read the history.csv file to populate the creatinine_results_history dictionary
@@ -64,7 +69,8 @@ class StorageManager:
                 'name': admission_msg.name,
                 'date_of_birth': admission_msg.date_of_birth,
                 'sex': admission_msg.sex,
-                'creatinine_results': self.creatinine_results_history[admission_msg.mrn]
+                'creatinine_results': self.creatinine_results_history[admission_msg.mrn],
+                'previous_positive_aki_prediction': False
                 }
                 
         else:
@@ -72,7 +78,8 @@ class StorageManager:
                 'name': admission_msg.name,
                 'date_of_birth': admission_msg.date_of_birth,
                 'sex': admission_msg.sex,
-                'creatinine_results': []
+                'creatinine_results': [],
+                'previous_positive_aki_prediction': False
                 }
     
     def add_test_result_to_current_patients(self, test_results_msg: TestResultMessage):
@@ -101,6 +108,18 @@ class StorageManager:
         """
         self.creatinine_results_history[discharge_msg.mrn] = self.current_patients[discharge_msg.mrn]['creatinine_results']
     
+    def no_positive_aki_prediction_so_far(self, mrn):
+        """
+        Checks if previously a positive aki prediction was triggered
+        """
+        return not self.current_patients[mrn]['previous_positive_aki_prediction']
+    
+    def update_positive_aki_prediction_to_current_patients(self, mrn):
+        """
+        Records to memory that a positive aki prediction was triggered
+        """
+        self.current_patients[mrn]['previous_positive_aki_prediction'] = True
+    
     def add_message_to_log_csv(self, message: object):
         """
         Appends a message as a single row to message_log.csv.
@@ -108,21 +127,21 @@ class StorageManager:
         # Prepare the message data based on the type of message
         if isinstance(message, PatientAdmissionMessage):
             row_data = {
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'type': 'PatientAdmission',
                 'mrn': message.mrn,
                 'additional_info': f"Name: {message.name}. DOB: {message.date_of_birth}. Sex: {message.sex}"
             }
         elif isinstance(message, PatientDischargeMessage):
             row_data = {
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'type': 'PatientDischarge',
                 'mrn': message.mrn,
                 'additional_info': ''
             }
         elif isinstance(message, TestResultMessage):
             row_data = {
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'type': 'TestResult',
                 'mrn': message.mrn,
                 'additional_info': f"Test Date: {message.test_date}. Test Time: {message.test_time}. Creatinine Value: {message.creatinine_value}"
@@ -173,6 +192,70 @@ class StorageManager:
                                         test_date,
                                         test_time, 
                                         creatinine_value))
+                if self.no_positive_aki_prediction_so_far(mrn):
+                    prediction_result = self.predict_aki(mrn)
+                    if prediction_result == 1:
+                        self.update_positive_aki_prediction_to_current_patients(mrn)
+                
+                
+    def load_model(self, model_path: str):
+        """Loads the predictive model from a file.
+
+        Returns:
+        The loaded predictive model.
+        """
+
+        model = joblib.load(model_path)
+        return model
+
+    @staticmethod
+    def determine_age(date_of_birth: str) -> int:
+        """
+        Determine the age of the patient.
+
+        Parameters:
+        date_of_birth (str): The date of birth of the patient in the format YYYY-MM-DD.
+
+        Returns:
+        int: The age of the patient.
+        """
+        today = datetime.date.today()
+        dob = datetime.datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+        return int(today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day)))
+    
+    def predict_aki(self, mrn: str, num_creatinine_results = 5) -> int:
+        """
+        Predicts whether a patient is at risk of AKI based on their medical record number (MRN).
+
+        Parameters:
+        mrn (str): The medical record number of the patient.
+
+        Returns:
+        int: 0 if no AKI is predicted, 1 if AKI is predicted.
+        """
+        # Access the data from current_patients dictionary
+        patient_data = self.current_patients.get(mrn)
+
+        if patient_data is None:
+            raise ValueError(f"Patient with MRN {mrn} not found in current_patients dictionary.")
+
+        sex = 0 if patient_data['sex'].lower() == 'm' else 1
+        age = self.determine_age(patient_data['date_of_birth'])
+
+        creatinine_results = patient_data['creatinine_results']
+
+        # Adjust creatinine results to match model input requirements
+        if len(creatinine_results) > num_creatinine_results:
+            recent_results = creatinine_results[-num_creatinine_results:]
+        else:
+            while len(creatinine_results) < num_creatinine_results:
+                creatinine_results.append(creatinine_results[-1])
+            recent_results = creatinine_results
+        
+        input_features = [age, sex] + recent_results
+        # Predict AKI and return the prediction
+        return self.model.predict(np.array(input_features, dtype=np.float64).reshape(1, -1))[0]
+
 
 if __name__ == "__main__":
     storage_manager = StorageManager()
