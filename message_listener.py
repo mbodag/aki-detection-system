@@ -1,5 +1,7 @@
-
+import signal
+import sys
 import socket
+import threading
 from storage_manager import StorageManager
 from message_parser import parse_message
 from aki_predictor import AKIPredictor
@@ -7,9 +9,18 @@ from aki_predictor import AKIPredictor
 import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
+import simulator
 import pandas as pd
 from datetime import datetime
 from config import MESSAGE_LOG_CSV_PATH
+
+shutdown_event = threading.Event()
+
+def shutdown():
+    shutdown_event.set()
+    print("pager: graceful shutdown")
+    pager.shutdown()
+signal.signal(signal.SIGTERM, lambda *args: shutdown())
 
 MLLP_ADDRESS, MLLP_PORT = os.environ['MLLP_ADDRESS'].split(":")
 MLLP_PORT = int(MLLP_PORT)
