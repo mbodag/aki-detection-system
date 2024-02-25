@@ -253,7 +253,6 @@ class StorageManager:
             recent_results = creatinine_results
         
         input_features = [age, sex] + recent_results
-        #print(input_features)
         # Predict AKI and return the prediction
         return self.model.predict(np.array(input_features, dtype=np.float64).reshape(1, -1))[0]
 

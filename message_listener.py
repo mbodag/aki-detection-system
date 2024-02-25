@@ -5,7 +5,6 @@ import threading
 import sys
 from storage_manager import StorageManager
 from message_parser import parse_message
-from aki_predictor import AKIPredictor
 from config import MLLP_PORT, MLLP_ADDRESS, PROMETHEUS_PORT, MESSAGE_LOG_CSV_PATH
 import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
@@ -73,12 +72,10 @@ def initialise_system(message_log_filepath : str = MESSAGE_LOG_CSV_PATH):
     """
     storage_manager = StorageManager(message_log_filepath = message_log_filepath)
     storage_manager.initialise_database(history_csv_path=HISTORY_CSV_PATH)
-    
-    aki_predictor = AKIPredictor(storage_manager)
 
     alert_manager = AlertManager()
     
-    return storage_manager, aki_predictor, alert_manager
+    return storage_manager, alert_manager
     
 
 def to_mllp(segments: list):
@@ -94,7 +91,7 @@ def to_mllp(segments: list):
 def from_mllp(buffer):
     return str(buffer[:-1], "ascii").split("\r") # Strip MLLP framing and final \r
 
-def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredictor, alert_manager: AlertManager):
+def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertManager):
     """
     This function listens for incoming MLLP messages, stores them, and sends AKI alerts if necessary.
 
@@ -137,7 +134,7 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
                 # If hospital staff has been previously paged about AKI in 
                 # regards to that patient, do not do that again
                 if storage_manager.no_positive_aki_prediction_so_far(message_object.mrn):
-                    prediction_result = aki_predictor.predict_aki(message_object.mrn)
+                    prediction_result = storage_manager.predict_aki(message_object.mrn)
                     p_test_result_messages.inc()
                     if prediction_result == 1:
                         alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
@@ -173,5 +170,5 @@ if __name__ == '__main__':
     else:
         from config import HISTORY_CSV_PATH
 
-    storage_manager, aki_predictor, alert_manager = initialise_system()
-    listen_for_messages(storage_manager, aki_predictor, alert_manager)
+    storage_manager, alert_manager = initialise_system()
+    listen_for_messages(storage_manager, alert_manager)
