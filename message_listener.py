@@ -24,6 +24,7 @@ p_positive_aki_predictions = Counter("positive_aki_predictions", "Number of posi
 p_aki_predictions_under_2_s = Counter("aki_under_2_s", "Number of aki predictions under 2 seconds")
 p_aki_predictions_under_3_s = Counter("aki_under_3_s", "Number of aki predictions under 3 seconds")
 p_aki_predictions_over_3_s = Counter("aki_over_3_s", "Number of aki predictions OVER 3 seconds")
+p_connection_closed_error = Counter("connection_closed_error", "Number of times socket connection closed")
 start_http_server(PROMETHEUS_PORT)
 
 shutdown_event = threading.Event()
@@ -121,6 +122,7 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
                 time_message_received = datetime.datetime.now()
                 r = s.recv(1024)
                 if len(r) == 0:
+                    p_connection_closed_error.inc()
                     raise Exception("client closed connection")
                 buffer += r
                 received, buffer = parse_mllp_messages(buffer, source)
