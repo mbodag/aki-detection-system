@@ -31,6 +31,6 @@ class AlertManager:
                 r = urllib.request.urlopen(f"http://{PAGER_ADDRESS}:{PAGER_PORT}/page", data=alert_data)
                 paged = True
             except urllib.error.URLError as e:
-                print(counter)
                 if counter == NUM_PAGING_RETRIES:
-                    print('DIDN"T MANAGE TO PAGE')
+                    pass
+                    #print('DIDN"T MANAGE TO PAGE')
