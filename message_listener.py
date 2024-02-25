@@ -9,7 +9,7 @@ from config import MLLP_PORT, MLLP_ADDRESS, PROMETHEUS_PORT, MESSAGE_LOG_CSV_PAT
 import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
-import simulator
+# import simulator
 import pandas as pd
 from datetime import datetime
 import argparse
@@ -22,18 +22,19 @@ p_admission_messages = Counter("admission_messages_received", "Number of admissi
 p_discharge_messages = Counter("discharge_messages_received", "Number of discharge messages received")
 p_test_result_messages = Counter("test_result_messages_received", "Number of test result messages received")
 p_positive_aki_predictions = Counter("positive_aki_predictions", "Number of positive aki predictions")
+p_connection_closed_error = Counter("connection_closed_error", "Number of connection closed errors")
 start_http_server(PROMETHEUS_PORT)
 
 shutdown_event = threading.Event()
 
-def shutdown():
-    shutdown_event.set()
-    print("pager: graceful shutdown")
-    pager.shutdown()
-signal.signal(signal.SIGTERM, lambda *args: shutdown())
+# def shutdown():
+#     shutdown_event.set()
+#     print("pager: graceful shutdown")
+#     pager.shutdown()
+# signal.signal(signal.SIGTERM, lambda *args: shutdown())
 
-MLLP_ADDRESS, MLLP_PORT = os.environ['MLLP_ADDRESS'].split(":")
-MLLP_PORT = int(MLLP_PORT)
+# MLLP_ADDRESS, MLLP_PORT = os.environ['MLLP_ADDRESS'].split(":")
+# MLLP_PORT = int(MLLP_PORT)
 
 ACK = [
     "MSH|^~\&|||||20240129093837||ACK|||2.5",
@@ -121,6 +122,7 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
             while len(received) < 1:
                 r = s.recv(1024)
                 if len(r) == 0:
+                    p_connection_closed_error.inc()
                     raise Exception("client closed connection")
                 buffer += r
                 received, buffer = parse_mllp_messages(buffer, source)
