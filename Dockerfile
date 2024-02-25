@@ -11,5 +11,5 @@ COPY model/model.jl /model/
 COPY requirements.txt /main/
 
 RUN pip3 install -r /main/requirements.txt
-CMD python3 /main/message_listener.py --history-dir=hospital-history/history.csv
+CMD python3 /main/message_listener.py --history-dir=data/history.csv
 

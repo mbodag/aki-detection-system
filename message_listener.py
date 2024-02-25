@@ -1,7 +1,8 @@
+import threading
 import signal
-import sys
 import socket
 import threading
+import sys
 from storage_manager import StorageManager
 from message_parser import parse_message
 from aki_predictor import AKIPredictor
@@ -9,7 +10,6 @@ from config import MLLP_PORT, MLLP_ADDRESS, PROMETHEUS_PORT, MESSAGE_LOG_CSV_PAT
 import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
-import simulator
 import pandas as pd
 from datetime import datetime
 import argparse
@@ -26,14 +26,13 @@ start_http_server(PROMETHEUS_PORT)
 
 shutdown_event = threading.Event()
 
-def shutdown():
+def shutdown(s):
     shutdown_event.set()
-    print("pager: graceful shutdown")
-    pager.shutdown()
-signal.signal(signal.SIGTERM, lambda *args: shutdown())
+    print("graceful shutdown")
+    # s.close()
+    sys.exit(0)
 
-MLLP_ADDRESS, MLLP_PORT = os.environ['MLLP_ADDRESS'].split(":")
-MLLP_PORT = int(MLLP_PORT)
+# signal.signal(signal.SIGTERM, lambda *args: shutdown())
 
 ACK = [
     "MSH|^~\&|||||20240129093837||ACK|||2.5",
@@ -153,6 +152,8 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
             s.sendall(ack[0:len(ack)//2])
             s.sendall(ack[len(ack)//2:])
             p_overall_messages_acknowledged.inc()
+            signal.signal(signal.SIGTERM, lambda *args: shutdown(s))
+
 
             
 if __name__ == '__main__':
