@@ -10,7 +10,7 @@ import os
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
 import pandas as pd
-from datetime import datetime
+import datetime
 import argparse
 
 from prometheus_client import Gauge, Counter, start_http_server
@@ -21,6 +21,9 @@ p_admission_messages = Counter("admission_messages_received", "Number of admissi
 p_discharge_messages = Counter("discharge_messages_received", "Number of discharge messages received")
 p_test_result_messages = Counter("test_result_messages_received", "Number of test result messages received")
 p_positive_aki_predictions = Counter("positive_aki_predictions", "Number of positive aki predictions")
+p_aki_predictions_under_2_s = Counter("aki_under_2_s", "Number of aki predictions under 2 seconds")
+p_aki_predictions_under_3_s = Counter("aki_under_3_s", "Number of aki predictions under 3 seconds")
+p_aki_predictions_over_3_s = Counter("aki_over_3_s", "Number of aki predictions OVER 3 seconds")
 start_http_server(PROMETHEUS_PORT)
 
 shutdown_event = threading.Event()
@@ -115,6 +118,7 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
         while True:    
             received = []
             while len(received) < 1:
+                time_message_received = datetime.datetime.now()
                 r = s.recv(1024)
                 if len(r) == 0:
                     raise Exception("client closed connection")
@@ -139,6 +143,13 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
                     if prediction_result == 1:
                         alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
                         storage_manager.update_positive_aki_prediction_to_current_patients(message_object.mrn)
+                        time_latency_aki_paging = datetime.datetime.now() - time_message_received
+                        if time_latency_aki_paging.total_seconds() < 2:
+                            p_aki_predictions_under_2_s.inc()
+                        elif time_latency_aki_paging.total_seconds() < 3:
+                            p_aki_predictions_under_3_s.inc()
+                        else:
+                            p_aki_predictions_over_3_s.inc()
                         p_positive_aki_predictions.inc()
                         
             elif isinstance(message_object, PatientDischargeMessage):
@@ -149,7 +160,7 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
             storage_manager.add_message_to_log_csv(message_object)
 
             ACK = [
-    f"MSH|^~\&|||||{datetime.now().strftime('%Y%M%D%H%M%S')}||ACK|||2.5",
+    f"MSH|^~\&|||||{datetime.datetime.now().strftime('%Y%M%D%H%M%S')}||ACK|||2.5",
     "MSA|AA",
 ]
             ack = to_mllp(ACK)
