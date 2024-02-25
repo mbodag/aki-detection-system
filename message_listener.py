@@ -1,4 +1,5 @@
-
+import threading
+import signal
 import socket
 from storage_manager import StorageManager
 from message_parser import parse_message
@@ -21,6 +22,15 @@ p_test_result_messages = Counter("test_result_messages_received", "Number of tes
 p_positive_aki_predictions = Counter("positive_aki_predictions", "Number of positive aki predictions")
 start_http_server(PROMETHEUS_PORT)
 
+# Your new signal handling code
+shutdown_event = threading.Event()
+
+pager = None
+def shutdown():
+    shutdown_event.set()
+    print("pager: graceful shutdown")
+    # You need to define pager.shutdown() or make sure it is callable
+    pager.shutdown()
 
 ACK = [
     "MSH|^~\&|||||20240129093837||ACK|||2.5",
