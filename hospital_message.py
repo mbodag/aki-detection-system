@@ -60,7 +60,7 @@ class TestResultMessage():
         self.test_date = test_date
         self.test_time = test_time
         self.creatinine_value = creatinine_value
-        self.timestamp = test_date[0:4] + test_date[5:7] + test_date[8:10] + test_time[0:2] + test_time[3:5]
+        self.timestamp = test_date[0:4] + test_date[5:7] + test_date[8:10] + test_time[0:2] + test_time[3:5] + test_time[6:8]
  
 # Example usage
 if __name__ == "__main__":
