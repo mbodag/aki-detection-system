@@ -127,21 +127,28 @@ def listen_for_messages(storage_manager: StorageManager, aki_predictor: AKIPredi
             messages.append(from_mllp(received[0]))
             message_object = parse_message(from_mllp(received[0]))
             p_overall_messages_received.inc()
+            
             if isinstance(message_object, PatientAdmissionMessage):
                 storage_manager.add_admitted_patient_to_current_patients(message_object)
                 p_admission_messages.inc()
+                
             elif isinstance(message_object, TestResultMessage):
                 storage_manager.add_test_result_to_current_patients(message_object)
-                prediction_result = aki_predictor.predict_aki(message_object.mrn)
-                p_test_result_messages.inc()
-                if prediction_result == 1:
-                    alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
-                    p_positive_aki_predictions.inc()
+                # If hospital staff has been previously paged about AKI in 
+                # regards to that patient, do not do that again
+                if storage_manager.no_positive_aki_prediction_so_far(message_object.mrn):
+                    prediction_result = aki_predictor.predict_aki(message_object.mrn)
+                    p_test_result_messages.inc()
+                    if prediction_result == 1:
+                        alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
+                        storage_manager.update_positive_aki_prediction_to_current_patients(message_object.mrn)
+                        p_positive_aki_predictions.inc()
+                        
             elif isinstance(message_object, PatientDischargeMessage):
                 storage_manager.remove_patient_from_current_patients(message_object)
                 p_discharge_messages.inc()
             
-
+            
             storage_manager.add_message_to_log_csv(message_object)
 
             ACK = [
