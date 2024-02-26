@@ -18,6 +18,8 @@ from message_parser import parse_message
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
 
+from storage_manager import p_sum_of_all_messages
+
 MLLP_START_OF_BLOCK = 0x0b
 MLLP_END_OF_BLOCK = 0x1c
 MLLP_CARRIAGE_RETURN = 0x0d
@@ -25,9 +27,6 @@ MLLP_CARRIAGE_RETURN = 0x0d
 #General message metrics
 p_overall_messages_received = Gauge("overall_messages_received", "Number of overall messages received")
 p_overall_messages_acknowledged = Counter("overall_messages_acknowledged", "Number of overall messages received")
-
-#Message parsing metrics
-p_successful_message_parsing = Counter("successful_message_parsing", "Number of successful message parsing")
 
 #Message type and handlings metrics
 p_admission_messages = Counter("admission_messages_received", "Number of valid admission messages received")
@@ -162,12 +161,12 @@ def listen_for_messages(storage_manager: StorageManager,
                     if len(r) == 0:
                         continue
                     time_message_received = time.time()
+                    p_sum_of_all_messages.inc()
                     p_overall_messages_received.inc()
                     buffer += r
                     received, buffer = parse_mllp_messages(buffer, source)
                     try:
                         message_object = parse_message(from_mllp(received[0]))
-                        p_successful_message_parsing.inc()
                         
                         if isinstance(message_object, PatientAdmissionMessage):
                             p_admission_messages.inc()

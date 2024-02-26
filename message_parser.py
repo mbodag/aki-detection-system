@@ -2,6 +2,10 @@ from typing import Union
 
 from hospital_message import PatientDischargeMessage, PatientAdmissionMessage, TestResultMessage
 
+from prometheus_client import Counter, start_http_server
+
+p_successful_message_parsing = Counter("successful_message_parsing", "Number of successful message parsing")
+
 def parse_message(hl7_message_str: str) -> Union[PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage]:
     """
     Parse an HL7 message string into an HL7 message object.
@@ -37,4 +41,6 @@ def parse_message(hl7_message_str: str) -> Union[PatientAdmissionMessage, TestRe
     
     else:
         raise ValueError(f"Unknown message type: {message_type}")    
+    
+    p_successful_message_parsing.inc()
     return message_object
