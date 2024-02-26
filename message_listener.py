@@ -33,13 +33,14 @@ p_unable_to_add_test_result = Counter("unable_to_add_test_result", "Number of ca
 p_positive_aki_predictions = Counter("positive_aki_predictions", "Number of positive aki predictions")
 p_negative_aki_predictions = Counter("negative_aki_predictions", "Number of negative aki predictions")
 p_number_of_pagings = Counter("number_of_pagings", "Number of times hospital staff has been paged")
+p_failed_pagings = Counter("failed_pagings", "Number of times paging failed")
 
 p_paging_latency = Histogram('paging_latency', 'Time to page positivie aki_prediction', buckets=[0.01, 0.05, 0.1, 0.5, 1, 2, 3, 4, 5, 10, 20, 40, 60, 120, 600, 1200])
 
 p_message_latency = Histogram('message_latency', 'Time to process message', buckets=[0.01, 0.05, 0.1, 0.5, 1, 2, 3, 4, 5, 10, 20, 40, 60, 120, 600, 1200])
 
 p_connection_closed_error = Counter("connection_closed_error", "Number of times socket connection closed")
-
+p_message_errors = Counter("message_errors", "Number of times a message was badly handled")
 start_http_server(PROMETHEUS_PORT)
 
 shutdown_event = threading.Event()
@@ -118,7 +119,6 @@ def connect_to_socket(max_attempts = 10, sleep_time = 3):
         try:
             print(f"Attempting to connect to {MLLP_ADDRESS}:{MLLP_PORT}, Attempt {attempt}...")
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(5)
             s.connect((MLLP_ADDRESS, MLLP_PORT))
             print(f"Connected to {MLLP_ADDRESS}:{MLLP_PORT} successfully!")
             return s
@@ -173,66 +173,49 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
             buffer += r
             received, buffer = parse_mllp_messages(buffer, source)
 
+            
         time_message_received = time.time()
         p_overall_messages_received.inc()
         try:
             message_object = parse_message(from_mllp(received[0]))
-        except ValueError:
-            #storage_manager.add_message_to_log_csv(message_object) I think this shouldn't happen
-            send_ack(s)
-            p_overall_messages_acknowledged.inc()
-            p_invalid_message_parsing.inc()
-            continue
-
-        if isinstance(message_object, PatientAdmissionMessage):
-            storage_manager.add_admitted_patient_to_current_patients(message_object)
-            p_admission_messages.inc()
-            
-        elif isinstance(message_object, TestResultMessage):
-            try:
+            if isinstance(message_object, PatientAdmissionMessage):
+                storage_manager.add_admitted_patient_to_current_patients(message_object)
+                p_admission_messages.inc()
+                
+            elif isinstance(message_object, TestResultMessage):
                 storage_manager.add_test_result_to_current_patients(message_object)
-            except ValueError:
                 p_unable_to_add_test_result.inc()
-                #storage_manager.add_message_to_log_csv(message_object) I think this shouldn't happen
-                send_ack(s)
-                p_overall_messages_acknowledged.inc()
-                p_test_result_messages.inc()
-                continue
             # If hospital staff has been previously paged about AKI in 
             # regards to that patient, do not do that again
-            if storage_manager.no_positive_aki_prediction_so_far(message_object.mrn):
-                prediction_result = storage_manager.predict_aki(message_object.mrn)
-                if prediction_result == 1:
-                    p_positive_aki_predictions.inc()
-                    alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
-                    p_number_of_pagings.inc()
-                    time_latency_aki_paging = time.time() - time_message_received
-                    p_paging_latency.observe(time_latency_aki_paging)
-                    
-                    storage_manager.update_positive_aki_prediction_to_current_patients(message_object.mrn)
-                elif prediction_result == 0:
-                    p_negative_aki_predictions.inc()
+                if storage_manager.no_positive_aki_prediction_so_far(message_object.mrn):
+                    prediction_result = storage_manager.predict_aki(message_object.mrn)
+                    if prediction_result == 1:
+                        p_positive_aki_predictions.inc()
+                        try:
+                            alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
+                        except RuntimeError:
+                            p_failed_pagings.inc()
+                        p_number_of_pagings.inc()
+                        time_latency_aki_paging = time.time() - time_message_received
+                        p_paging_latency.observe(time_latency_aki_paging)
+                        
+                        storage_manager.update_positive_aki_prediction_to_current_patients(message_object.mrn)
+                    elif prediction_result == 0:
+                        p_negative_aki_predictions.inc()
             
-            p_test_result_messages.inc()    
+                p_test_result_messages.inc()    
                 
-        elif isinstance(message_object, PatientDischargeMessage):
-            try: 
+            elif isinstance(message_object, PatientDischargeMessage):
                 storage_manager.remove_patient_from_current_patients(message_object)
                 p_discharge_messages.inc()
-                
-            except ValueError:
-                p_discharge_messages.inc()
-                p_invalid_discharge_messages.inc()
-                send_ack(s)
-                p_overall_messages_acknowledged.inc()
-                continue
-        
-        
-        storage_manager.add_message_to_log_csv(message_object)
-        send_ack(s)
-        p_overall_messages_acknowledged.inc()
-        time_message_latency = time.time() - time_message_received
-        p_message_latency.observe(time_message_latency)
+            storage_manager.add_message_to_log_csv(message_object)
+        except ValueError:
+            p_message_errors.inc()
+        finally: 
+            send_ack(s)
+            p_overall_messages_acknowledged.inc()
+            time_message_latency = time.time() - time_message_received
+            p_message_latency.observe(time_message_latency)
         signal.signal(signal.SIGTERM, lambda *args: shutdown(s))
 
 

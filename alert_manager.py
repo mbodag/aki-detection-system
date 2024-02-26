@@ -6,7 +6,7 @@ from config import PAGER_PORT, PAGER_ADDRESS
 import socket
 import time
 
-NUM_PAGING_RETRIES = 3 
+NUM_PAGING_RETRIES = 10 
 
 class AlertManager:
     """
@@ -25,15 +25,15 @@ class AlertManager:
         socket.setdefaulttimeout(1)
         paged = False
         counter = 0
-        while paged  == False and counter < 10:
+        while not paged and counter < NUM_PAGING_RETRIES:
             counter += 1
             try:
                 alert_data = bytes(patient_mrn +','+timestamp, 'utf-8')
                 r = urllib.request.urlopen(f"http://{PAGER_ADDRESS}:{PAGER_PORT}/page", data=alert_data)
-                if r.status == 200:
+                if 200 <= r.status  <= 300:
                     paged = True
                 else:
                     time.sleep(1)
             except urllib.error.URLError as e:
                 if counter == NUM_PAGING_RETRIES:
-                    pass
+                    raise RuntimeError("Failed to page")
