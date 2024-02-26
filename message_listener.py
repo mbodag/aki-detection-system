@@ -102,19 +102,25 @@ def send_ack(s: socket.socket):
     s.sendall(ack[0:len(ack)//2])
     s.sendall(ack[len(ack)//2:])
 
-def connect_to_socket(s, num_attempts = 10, sleep_time = 3):
-    connection_attempts_counter = 0
-    connection_result = s.connect_ex((MLLP_ADDRESS, MLLP_PORT))
-    while connection_result != 0 and connection_attempts_counter < num_attempts:
-            print(f"Failed to connect to '{MLLP_ADDRESS}':{MLLP_PORT} (error {connection_result}). Retrying in 3 seconds...")
-            connection_attempts_counter += 1
-            time.sleep(sleep_time)
-            connection_result = s.connect_ex((MLLP_ADDRESS, MLLP_PORT))
+def connect_to_socket(max_attempts = 10, sleep_time = 3):
+    attempt = 1
+    while attempt <= max_attempts:
+        try:
+            print(f"Attempting to connect to {MLLP_ADDRESS}:{MLLP_PORT}, Attempt {attempt}...")
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
+            s.connect((MLLP_ADDRESS, MLLP_PORT))
+            print(f"Connected to {MLLP_ADDRESS}:{MLLP_PORT} successfully!")
+            return s
+        except socket.error as e:
+            print(f"Connection attempt {attempt} failed:", e)
+            attempt += 1
+            if attempt <= max_attempts:
+                print(f"Retrying in {sleep_time} seconds...")
+                time.sleep(sleep_time)
+            else:    
+                sys.exit(f"Failed to connect to '{MLLP_ADDRESS}':{MLLP_PORT}. Exiting...")    
     
-    
-    if connection_result != 0:
-        sys.exit(f"Failed to connect to '{MLLP_ADDRESS}':{MLLP_PORT}. Exiting...")
-
 def from_mllp(buffer):
     return str(buffer[:-1], "ascii").split("\r") # Strip MLLP framing and final \r
 
@@ -136,8 +142,8 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
     messages = []
     source = f"{MLLP_ADDRESS}:{MLLP_PORT}"
     buffer = b""
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    connect_to_socket(s)    
+    #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s = connect_to_socket()    
     print(f"Listening for HL7 messages on '{MLLP_ADDRESS}':{MLLP_PORT}")
     while True:    
         received = []
@@ -150,10 +156,10 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
                     s.close()
                     raise Exception("client closed connection")
             except ConnectionResetError:
-                connect_to_socket(s)
+                s = connect_to_socket()
                 continue
             except Exception:
-                connect_to_socket(s)
+                s = connect_to_socket()
                 continue
             
             buffer += r
