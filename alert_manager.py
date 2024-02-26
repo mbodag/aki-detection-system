@@ -4,6 +4,7 @@ import urllib.request
 import os
 from config import PAGER_PORT, PAGER_ADDRESS
 import socket
+import time
 
 NUM_PAGING_RETRIES = 3 
 
@@ -21,16 +22,18 @@ class AlertManager:
         patient_mrn (str): The medical record number of the patient.
         timestamp (str): The timestamp of the alert in the format YYYYMMDDHHMMSS
         """
-        socket.setdefaulttimeout(2)
+        socket.setdefaulttimeout(1)
         paged = False
         counter = 0
-        while paged  == False and counter < NUM_PAGING_RETRIES:
+        while paged  == False and counter < 10:
             counter += 1
             try:
                 alert_data = bytes(patient_mrn +','+timestamp, 'utf-8')
                 r = urllib.request.urlopen(f"http://{PAGER_ADDRESS}:{PAGER_PORT}/page", data=alert_data)
-                paged = True
+                if r.status == 200:
+                    paged = True
+                else:
+                    time.sleep(1)
             except urllib.error.URLError as e:
                 if counter == NUM_PAGING_RETRIES:
                     pass
-                    #print('DIDN"T MANAGE TO PAGE')

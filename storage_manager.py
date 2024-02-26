@@ -166,32 +166,37 @@ class StorageManager:
         # Read the history.csv file to populate the creatinine_results_history dictionary
         df = pd.read_csv(self.message_log_filepath)         
         for _, row in df.iterrows():
-            if row['type'] == 'PatientAdmission':
+            if row[1] == 'PatientAdmission':
                 # Assuming additional_info contains comma-separated data
-                info_parts = row['additional_info'].split('. ')
-                mrn = str(row['mrn'])
+                info_parts = row[3].split('. ')
+                mrn = str(row[2])
                 name = info_parts[0].split(': ')[1]
                 dob = info_parts[1].split(': ')[1]
                 sex = info_parts[2].split(': ')[1]
                 self.add_admitted_patient_to_current_patients(
                     PatientAdmissionMessage(mrn, name, dob, sex))
-            elif row['type'] == 'PatientDischarge':
-                mrn = str(row['mrn'])
-
-                self.remove_patient_from_current_patients(
-                    PatientDischargeMessage(mrn))
+            elif row[1] == 'PatientDischarge':
+                mrn = str(row[2])
+                try:
+                    self.remove_patient_from_current_patients(
+                        PatientDischargeMessage(mrn))
+                except ValueError: 
+                    pass
                 
-            elif row['type'] == 'TestResult':
-                info_parts = row['additional_info'].split('. ')
-                mrn = str(row['mrn'])
+            elif row[1] == 'TestResult':
+                info_parts = row[3].split('. ')
+                mrn = str(row[2])
                 test_date = info_parts[0].split(': ')[1]
                 test_time = info_parts[1].split(': ')[1]
                 creatinine_value = info_parts[2].split(': ')[1]
-                self.add_test_result_to_current_patients(
+                try:
+                    self.add_test_result_to_current_patients(
                     TestResultMessage(mrn, 
                                         test_date,
                                         test_time, 
                                         creatinine_value))
+                except ValueError: 
+                    continue
                 if self.no_positive_aki_prediction_so_far(mrn):
                     prediction_result = self.predict_aki(mrn)
                     if prediction_result == 1:
