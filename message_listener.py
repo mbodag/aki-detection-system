@@ -31,6 +31,9 @@ p_test_result_messages = Counter("test_result_messages_received", "Number of tes
 p_unable_to_add_test_result = Counter("unable_to_add_test_result", "Number of cases where the test result was not added to the storage manager due to not having the patient in the current patients list")
 
 p_positive_aki_predictions = Counter("positive_aki_predictions", "Number of positive aki predictions")
+p_negative_aki_predictions = Counter("negative_aki_predictions", "Number of negative aki predictions")
+p_number_of_pagings = Counter("number_of_pagings", "Number of times hospital staff has been paged")
+
 p_paging_latency = Histogram('paging_latency', 'Time to page positivie aki_prediction', buckets=[0.01, 0.05, 0.1, 0.5, 1, 2, 3, 4, 5, 10, 20, 40, 60, 120, 600, 1200])
 
 p_message_latency = Histogram('message_latency', 'Time to process message', buckets=[0.01, 0.05, 0.1, 0.5, 1, 2, 3, 4, 5, 10, 20, 40, 60, 120, 600, 1200])
@@ -200,14 +203,15 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
             if storage_manager.no_positive_aki_prediction_so_far(message_object.mrn):
                 prediction_result = storage_manager.predict_aki(message_object.mrn)
                 if prediction_result == 1:
+                    p_positive_aki_predictions.inc()
                     alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
-                    
+                    p_number_of_pagings.inc()
                     time_latency_aki_paging = time.time() - time_message_received
                     p_paging_latency.observe(time_latency_aki_paging)
                     
                     storage_manager.update_positive_aki_prediction_to_current_patients(message_object.mrn)
-                    
-                    p_positive_aki_predictions.inc()
+                elif prediction_result == 0:
+                    p_negative_aki_predictions.inc()
             
             p_test_result_messages.inc()    
                 
