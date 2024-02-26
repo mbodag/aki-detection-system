@@ -40,6 +40,8 @@ p_paging_latency = Histogram('paging_latency', 'Time to page positivie aki_predi
 p_message_latency = Histogram('message_latency', 'Time to process message', buckets=[0.01, 0.05, 0.1, 0.5, 1, 2, 3, 4, 5, 10, 20, 40, 60, 120, 600, 1200])
 
 p_connection_closed_error = Counter("connection_closed_error", "Number of times socket connection closed")
+p_number_of_connection_attempts = Counter("number_of_connection_attempts", "Number of times socket connection was attempted")
+
 p_message_errors = Counter("message_errors", "Number of times a message was badly handled")
 start_http_server(PROMETHEUS_PORT)
 
@@ -119,17 +121,24 @@ def connect_to_socket(max_attempts = 10, sleep_time = 3):
         try:
             print(f"Attempting to connect to {MLLP_ADDRESS}:{MLLP_PORT}, Attempt {attempt}...")
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            p_number_of_connection_attempts.inc()
+            s.settimeout(5)
             s.connect((MLLP_ADDRESS, MLLP_PORT))
             print(f"Connected to {MLLP_ADDRESS}:{MLLP_PORT} successfully!")
             return s
         except socket.error as e:
-            print(f"Connection attempt {attempt} failed:", e)
+            print(f"Connection attempt {attempt} failed due to socket error:", e)
+        except socket.timeout as timeout_error:
+            print(f"Connection attempt {attempt} failed due to timeout:", timeout_error)
+        except socket.gaierror as gai_error:
+            print(f"Connection attempt {attempt} failed due to address-related error:", gai_error)
+        finally:
             attempt += 1
             if attempt <= max_attempts:
                 print(f"Retrying in {sleep_time} seconds...")
                 time.sleep(sleep_time)
             else:    
-                sys.exit(f"Failed to connect to '{MLLP_ADDRESS}':{MLLP_PORT}. Exiting...")    
+                sys.exit(f"Failed to connect to '{MLLP_ADDRESS}':{MLLP_PORT}. Exiting...")
     
 def from_mllp(buffer):
     return str(buffer[:-1], "ascii").split("\r") # Strip MLLP framing and final \r
@@ -164,9 +173,11 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
                     s.close()
                     raise Exception("client closed connection")
             except ConnectionResetError:
+                time.sleep(5)
                 s = connect_to_socket()
                 continue
             except Exception:
+                time.sleep(5)
                 s = connect_to_socket()
                 continue
             
