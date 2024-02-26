@@ -34,5 +34,7 @@ def parse_message(hl7_message_str: str) -> Union[PatientAdmissionMessage, TestRe
     elif message_type == 'ADT^A03': 
         mrn = message[1].split("|")[3]
         message_object = PatientDischargeMessage(mrn)
-        
+    
+    else:
+        raise ValueError(f"Unknown message type: {message_type}")    
     return message_object

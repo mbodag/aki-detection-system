@@ -11,6 +11,7 @@ from hospital_message import PatientAdmissionMessage, TestResultMessage, Patient
 from alert_manager import AlertManager
 import pandas as pd
 import datetime
+import time
 import argparse
 
 from prometheus_client import Gauge, Counter, start_http_server
@@ -19,12 +20,15 @@ p_overall_messages_received = Gauge("overall_messages_received", "Number of over
 p_overall_messages_acknowledged = Counter("overall_messages_acknowledged", "Number of overall messages received")
 p_admission_messages = Counter("admission_messages_received", "Number of admission messages received")
 p_discharge_messages = Counter("discharge_messages_received", "Number of discharge messages received")
+p_invalid_discharge_messages = Counter("invalid_discharge_messages_received", "Number of INVALID discharge messages received")
 p_test_result_messages = Counter("test_result_messages_received", "Number of test result messages received")
 p_positive_aki_predictions = Counter("positive_aki_predictions", "Number of positive aki predictions")
 p_aki_predictions_under_2_s = Counter("aki_under_2_s", "Number of aki predictions under 2 seconds")
 p_aki_predictions_under_3_s = Counter("aki_under_3_s", "Number of aki predictions under 3 seconds")
 p_aki_predictions_over_3_s = Counter("aki_over_3_s", "Number of aki predictions OVER 3 seconds")
 p_connection_closed_error = Counter("connection_closed_error", "Number of times socket connection closed")
+p_invalid_message_types = Counter("invalid_message_types", "Number of invalid message types")
+p_unable_to_add_test_result = Counter("unable_to_add_test_result", "Number of cases whhere the test result was not added to the storage manager due to not having the patient in the current patients list")
 start_http_server(PROMETHEUS_PORT)
 
 shutdown_event = threading.Event()
@@ -32,7 +36,7 @@ shutdown_event = threading.Event()
 def shutdown(s):
     shutdown_event.set()
     print("graceful shutdown")
-    # s.close()
+    s.close()
     sys.exit(0)
 
 # signal.signal(signal.SIGTERM, lambda *args: shutdown())
@@ -91,6 +95,25 @@ def to_mllp(segments: list):
     m += bytes(chr(MLLP_END_OF_BLOCK) + chr(MLLP_CARRIAGE_RETURN), "ascii")
     return m
 
+def send_ack(s: socket.socket):
+    ACK = [f"MSH|^~\&|||||{datetime.datetime.now().strftime('%Y%M%D%H%M%S')}||ACK|||2.5",
+                    "MSA|AA",]
+    ack = to_mllp(ACK)
+    s.sendall(ack[0:len(ack)//2])
+    s.sendall(ack[len(ack)//2:])
+
+def connect_to_socket(s, num_attempts = 10, sleep_time = 3):
+    connection_attempts_counter = 0
+    connection_result = s.connect_ex((MLLP_ADDRESS, MLLP_PORT))
+    while connection_result != 0 and connection_attempts_counter < num_attempts:
+            print(f"Failed to connect to '{MLLP_ADDRESS}':{MLLP_PORT} (error {connection_result}). Retrying in 3 seconds...")
+            connection_attempts_counter += 1
+            time.sleep(sleep_time)
+            connection_result = s.connect_ex((MLLP_ADDRESS, MLLP_PORT))
+    
+    
+    if connection_result != 0:
+        sys.exit(f"Failed to connect to '{MLLP_ADDRESS}':{MLLP_PORT}. Exiting...")
 
 def from_mllp(buffer):
     return str(buffer[:-1], "ascii").split("\r") # Strip MLLP framing and final \r
@@ -113,63 +136,82 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
     messages = []
     source = f"{MLLP_ADDRESS}:{MLLP_PORT}"
     buffer = b""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((MLLP_ADDRESS, MLLP_PORT))
-        print(f"Listening for HL7 messages on '{MLLP_ADDRESS}':{MLLP_PORT}")
-        while True:    
-            received = []
-            while len(received) < 1:
-                time_message_received = datetime.datetime.now()
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    connect_to_socket(s)    
+    print(f"Listening for HL7 messages on '{MLLP_ADDRESS}':{MLLP_PORT}")
+    while True:    
+        received = []
+        while len(received) < 1:
+            time_message_received = datetime.datetime.now()
+            try:
                 r = s.recv(1024)
                 if len(r) == 0:
                     p_connection_closed_error.inc()
+                    s.close()
                     raise Exception("client closed connection")
-                buffer += r
-                received, buffer = parse_mllp_messages(buffer, source)
-    
-            messages.append(from_mllp(received[0]))
-            message_object = parse_message(from_mllp(received[0]))
-            p_overall_messages_received.inc()
+            except ConnectionResetError:
+                connect_to_socket(s)
+                continue
+            except Exception:
+                connect_to_socket(s)
+                continue
             
-            if isinstance(message_object, PatientAdmissionMessage):
-                storage_manager.add_admitted_patient_to_current_patients(message_object)
-                p_admission_messages.inc()
-                
-            elif isinstance(message_object, TestResultMessage):
-                storage_manager.add_test_result_to_current_patients(message_object)
-                # If hospital staff has been previously paged about AKI in 
-                # regards to that patient, do not do that again
-                if storage_manager.no_positive_aki_prediction_so_far(message_object.mrn):
-                    prediction_result = storage_manager.predict_aki(message_object.mrn)
-                    p_test_result_messages.inc()
-                    if prediction_result == 1:
-                        alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
-                        storage_manager.update_positive_aki_prediction_to_current_patients(message_object.mrn)
-                        time_latency_aki_paging = datetime.datetime.now() - time_message_received
-                        if time_latency_aki_paging.total_seconds() < 2:
-                            p_aki_predictions_under_2_s.inc()
-                        elif time_latency_aki_paging.total_seconds() < 3:
-                            p_aki_predictions_under_3_s.inc()
-                        else:
-                            p_aki_predictions_over_3_s.inc()
-                        p_positive_aki_predictions.inc()
-                        
-            elif isinstance(message_object, PatientDischargeMessage):
-                storage_manager.remove_patient_from_current_patients(message_object)
-                p_discharge_messages.inc()
-            
-            
-            storage_manager.add_message_to_log_csv(message_object)
+            buffer += r
+            received, buffer = parse_mllp_messages(buffer, source)
 
-            ACK = [
-    f"MSH|^~\&|||||{datetime.datetime.now().strftime('%Y%M%D%H%M%S')}||ACK|||2.5",
-    "MSA|AA",
-]
-            ack = to_mllp(ACK)
-            s.sendall(ack[0:len(ack)//2])
-            s.sendall(ack[len(ack)//2:])
+        messages.append(from_mllp(received[0]))
+        try:
+            message_object = parse_message(from_mllp(received[0]))
+        except ValueError:
+            #storage_manager.add_message_to_log_csv(message_object) I think this shouldn't happen
+            send_ack(s)
+            p_overall_messages_received.inc()
             p_overall_messages_acknowledged.inc()
-            signal.signal(signal.SIGTERM, lambda *args: shutdown(s))
+            p_invalid_message_types.inc()
+            continue
+
+        if isinstance(message_object, PatientAdmissionMessage):
+            storage_manager.add_admitted_patient_to_current_patients(message_object)
+            p_admission_messages.inc()
+            
+        elif isinstance(message_object, TestResultMessage):
+            try:
+                storage_manager.add_test_result_to_current_patients(message_object)
+            except ValueError:
+                p_unable_to_add_test_result.inc()
+                #storage_manager.add_message_to_log_csv(message_object) I think this shouldn't happen
+                send_ack(s)
+                p_overall_messages_acknowledged.inc()
+                continue
+            # If hospital staff has been previously paged about AKI in 
+            # regards to that patient, do not do that again
+            if storage_manager.no_positive_aki_prediction_so_far(message_object.mrn):
+                prediction_result = storage_manager.predict_aki(message_object.mrn)
+                p_test_result_messages.inc()
+                if prediction_result == 1:
+                    alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
+                    storage_manager.update_positive_aki_prediction_to_current_patients(message_object.mrn)
+                    time_latency_aki_paging = datetime.datetime.now() - time_message_received
+                    if time_latency_aki_paging.total_seconds() < 2:
+                        p_aki_predictions_under_2_s.inc()
+                    elif time_latency_aki_paging.total_seconds() < 3:
+                        p_aki_predictions_under_3_s.inc()
+                    else:
+                        p_aki_predictions_over_3_s.inc()
+                    p_positive_aki_predictions.inc()
+                    
+        elif isinstance(message_object, PatientDischargeMessage):
+            try: 
+                storage_manager.remove_patient_from_current_patients(message_object)
+            except ValueError:
+                p_invalid_discharge_messages.inc()
+                pass
+            p_discharge_messages.inc()
+        
+        
+        storage_manager.add_message_to_log_csv(message_object)
+        send_ack(s)
+        signal.signal(signal.SIGTERM, lambda *args: shutdown(s))
 
 
             

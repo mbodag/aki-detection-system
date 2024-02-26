@@ -4,7 +4,6 @@ COPY message_parser.py /main/
 COPY hospital_message.py /main/
 COPY message_listener.py /main/
 COPY storage_manager.py /main/
-COPY aki_predictor.py /main/
 COPY alert_manager.py /main/
 COPY config.py /main/
 COPY model/model.jl /model/
