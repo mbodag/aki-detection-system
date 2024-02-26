@@ -16,33 +16,44 @@ import argparse
 
 from prometheus_client import Gauge, Counter, Histogram, start_http_server
 
+#General message metrics
 p_overall_messages_received = Gauge("overall_messages_received", "Number of overall messages received")
 p_overall_messages_acknowledged = Counter("overall_messages_acknowledged", "Number of overall messages received")
 
-p_invalid_message_parsing = Counter("invalid_message_parsing", "Number of invalid message types")
+#Message parsing metrics
+p_successful_message_parsing = Counter("invalid_message_parsing", "Number of invalid message types")
 
+#Message type and handlings metrics
 p_admission_messages = Counter("admission_messages_received", "Number of valid admission messages received")
-# p_invalid_admission_messages does not exist
+p_successful_admission_message_handlings = Counter("successful_admission_message_handlings", "Number of valid admission messages received and handled correctly")
 
 p_discharge_messages = Counter("discharge_messages_received", "Number of discharge messages received")
-p_invalid_discharge_messages = Counter("invalid_discharge_messages_received", "Number of INVALID discharge messages received")
+p_successful_discharge_message_handlings = Counter("successful_discharge_message_handlings", "Number of valid discharge messages received and handled correctly")
 
 p_test_result_messages = Counter("test_result_messages_received", "Number of test result messages received")
-p_unable_to_add_test_result = Counter("unable_to_add_test_result", "Number of cases where the test result was not added to the storage manager due to not having the patient in the current patients list")
+p_successful_test_result_handlings = Counter("unable_to_add_test_result", "Number of cases where the test result was not added to the storage manager due to not having the patient in the current patients list")
 
+#Predictions and pagings
 p_positive_aki_predictions = Counter("positive_aki_predictions", "Number of positive aki predictions")
 p_negative_aki_predictions = Counter("negative_aki_predictions", "Number of negative aki predictions")
 p_number_of_pagings = Counter("number_of_pagings", "Number of times hospital staff has been paged")
 p_failed_pagings = Counter("failed_pagings", "Number of times paging failed")
 
-p_paging_latency = Histogram('paging_latency', 'Time to page positivie aki_prediction', buckets=[0.01, 0.05, 0.1, 0.5, 1, 2, 3, 4, 5, 10, 20, 40, 60, 120, 600, 1200])
+#Log metrics
+p_messages_added_to_log = Counter("messages_added_to_log", "Number of messages added to the log")
 
+#Latency metrics
+p_paging_latency = Histogram('paging_latency', 'Time to page positive aki_prediction', buckets=[0.01, 0.05, 0.1, 0.5, 1, 2, 3, 4, 5, 10, 20, 40, 60, 120, 600, 1200])
 p_message_latency = Histogram('message_latency', 'Time to process message', buckets=[0.01, 0.05, 0.1, 0.5, 1, 2, 3, 4, 5, 10, 20, 40, 60, 120, 600, 1200])
 
+#Connection and reconnection metrics
 p_connection_closed_error = Counter("connection_closed_error", "Number of times socket connection closed")
 p_number_of_connection_attempts = Counter("number_of_connection_attempts", "Number of times socket connection was attempted")
 
+#Badly handled messages
 p_message_errors = Counter("message_errors", "Number of times a message was badly handled")
+
+
 start_http_server(PROMETHEUS_PORT)
 
 shutdown_event = threading.Event()
@@ -189,13 +200,16 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
         p_overall_messages_received.inc()
         try:
             message_object = parse_message(from_mllp(received[0]))
+            p_successful_message_parsing.inc()
             if isinstance(message_object, PatientAdmissionMessage):
-                storage_manager.add_admitted_patient_to_current_patients(message_object)
                 p_admission_messages.inc()
+                storage_manager.add_admitted_patient_to_current_patients(message_object)
+                p_successful_admission_message_handlings.inc()
                 
             elif isinstance(message_object, TestResultMessage):
+                p_test_result_messages.inc()
                 storage_manager.add_test_result_to_current_patients(message_object)
-                p_unable_to_add_test_result.inc()
+                p_successful_test_result_handlings.inc()
             # If hospital staff has been previously paged about AKI in 
             # regards to that patient, do not do that again
                 if storage_manager.no_positive_aki_prediction_so_far(message_object.mrn):
@@ -213,13 +227,13 @@ def listen_for_messages(storage_manager: StorageManager, alert_manager: AlertMan
                         storage_manager.update_positive_aki_prediction_to_current_patients(message_object.mrn)
                     elif prediction_result == 0:
                         p_negative_aki_predictions.inc()
-            
-                p_test_result_messages.inc()    
-                
+                            
             elif isinstance(message_object, PatientDischargeMessage):
-                storage_manager.remove_patient_from_current_patients(message_object)
                 p_discharge_messages.inc()
+                storage_manager.remove_patient_from_current_patients(message_object)
+                p_successful_discharge_message_handlings.inc()
             storage_manager.add_message_to_log_csv(message_object)
+            p_messages_added_to_log.inc()
         except ValueError:
             p_message_errors.inc()
         finally: 
