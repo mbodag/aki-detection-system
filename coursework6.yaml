@@ -28,15 +28,15 @@ spec:
     spec:
       containers:
       - name: aki-detection
-        image: imperialswemlsspring2024.azurecr.io/coursework5-emilia
+        image: imperialswemlsspring2024.azurecr.io/coursework6-emilia
         command: ["python3", "/main/message_listener.py"]
         args:
         - "--history=/hospital-history/history.csv"
         env:
         - name: MLLP_ADDRESS
-          value: emilia-simulator.coursework5:8440
+          value: emilia-simulator.coursework6:8440
         - name: PAGER_ADDRESS
-          value: emilia-simulator.coursework5:8441
+          value: emilia-simulator.coursework6:8441
         ports:
         - name: http
           containerPort: 8000
@@ -52,7 +52,7 @@ spec:
             cpu: 1
       initContainers:
       - name: copy-hospital-history
-        image: imperialswemlsspring2024.azurecr.io/coursework5-history
+        image: imperialswemlsspring2024.azurecr.io/coursework6-history
         volumeMounts:
           - mountPath: "/hospital-history"
             name: hospital-history

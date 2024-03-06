@@ -1,8 +1,8 @@
 import os
 
 # The path to the CSV file where historical patient data is stored.
-HISTORY_CSV_PATH = 'data/history.csv'
-MESSAGE_LOG_CSV_PATH = 'message_log.csv'
+HISTORY_CSV_PATH = '/hospital-history/history.csv'
+MESSAGE_LOG_CSV_PATH = '/state/message_log.csv'
 
 # These act as the header row for the MESSAGE_LOG CSV file
 MESSAGE_LOG_CSV_FIELDS = ['timestamp', 'type', 'mrn', 'additional_info']
@@ -25,4 +25,4 @@ else:
     PAGER_PORT = int(PAGER_PORT)
 
 
-PROMETHEUS_PORT = 8001
+PROMETHEUS_PORT = 8000

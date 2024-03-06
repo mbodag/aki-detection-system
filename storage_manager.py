@@ -11,12 +11,14 @@ from hospital_message import PatientAdmissionMessage, TestResultMessage, Patient
 from prometheus_client import Counter
 
 p_sum_of_all_messages = Counter("sum_of_all_messages", "Number of all messages received AND reinstated")
+p_sum_of_positive_aki_predictions = Counter("sum_of_positive_aki_predictions", "Number of all aki predictions from received AND reinstated")
 
-p_overall_messages_instantiated = Counter("overall_messages_instantiated", "Number of overall messages instantiated")
-p_admission_messages_instantiated = Counter("admission_messages_instantiated", "Number of admission messages instantiated")
-p_discard_admission_messages = Counter("discard_admission_messages", "Number of discarded admission messages")
-p_test_result_messages_instantiated = Counter("test_result_messages_instantiated", "Number of test result messages instantiated")
-p_error_during_message_instantiation = Counter("error_during_message_instantiation", "Number of errors during message instantiation")
+
+p_reinstantiated_overall = Counter("reinstantiated_overall", "Number of overall messages reinstantiated from log")
+p_reinstantiated_admission = Counter("reinstantiated_admission", "Number of admission messages reinstantiated")
+p_reinstantiated_discharge = Counter("reinstantiated_discharge", "Number of discarded admission reinstantiated")
+p_reinstantiated_test_result = Counter("reinstantiated_test_result", "Number of test result messages reinstantiated")
+p_reinstantiation_errors = Counter("reinstantiation_errors", "Number of errors during message instantiation")
 
 class StorageManager:
     """
@@ -177,7 +179,7 @@ class StorageManager:
         df = pd.read_csv(self.message_log_filepath)         
         for _, row in df.iterrows():
             p_sum_of_all_messages.inc()
-            p_overall_messages_instantiated.inc()
+            p_reinstantiated_overall.inc()
             if row[1] == 'PatientAdmission':
                 # Assuming additional_info contains comma-separated data
                 info_parts = row[3].split('. ')
@@ -187,15 +189,15 @@ class StorageManager:
                 sex = info_parts[2].split(': ')[1]
                 self.add_admitted_patient_to_current_patients(
                     PatientAdmissionMessage(mrn, name, dob, sex))
-                p_admission_messages_instantiated.inc()
+                p_reinstantiated_admission.inc()
             elif row[1] == 'PatientDischarge':
                 mrn = str(row[2])
                 try:
                     self.remove_patient_from_current_patients(
                         PatientDischargeMessage(mrn))
-                    p_discard_admission_messages.inc()
+                    p_reinstantiated_discharge.inc()
                 except ValueError: 
-                    p_error_during_message_instantiation.inc()
+                    p_reinstantiation_errors.inc()
                 
             elif row[1] == 'TestResult':
                 info_parts = row[3].split('. ')
@@ -209,17 +211,18 @@ class StorageManager:
                                         test_date,
                                         test_time, 
                                         creatinine_value))
-                    p_test_result_messages_instantiated.inc()
+                    p_reinstantiated_test_result.inc()
                 except ValueError: 
-                    p_error_during_message_instantiation.inc()
+                    p_reinstantiation_errors.inc()
                     continue
                 if self.no_positive_aki_prediction_so_far(mrn):
                     prediction_result = self.predict_aki(mrn)
                     if prediction_result == 1:
                         self.update_positive_aki_prediction_to_current_patients(mrn)
+                        p_sum_of_positive_aki_predictions.inc()
             
             else:
-                p_error_during_message_instantiation.inc()
+                p_reinstantiation_errors.inc()
                 
                 
     def load_model(self, model_path: str):

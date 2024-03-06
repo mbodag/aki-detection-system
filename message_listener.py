@@ -18,7 +18,7 @@ from message_parser import parse_message
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
 from alert_manager import AlertManager
 
-from storage_manager import p_sum_of_all_messages
+from storage_manager import p_sum_of_all_messages, p_sum_of_positive_aki_predictions
 
 MLLP_START_OF_BLOCK = 0x0b
 MLLP_END_OF_BLOCK = 0x1c
@@ -182,6 +182,7 @@ def listen_for_messages(storage_manager: StorageManager,
                                 prediction_result = storage_manager.predict_aki(message_object.mrn)
                                 if prediction_result == 1:
                                     p_positive_aki_predictions.inc()
+                                    p_sum_of_positive_aki_predictions.inc()
                                     try:
                                         alert_manager.send_alert(message_object.mrn, message_object.timestamp) 
                                     except RuntimeError:
