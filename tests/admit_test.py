@@ -43,7 +43,7 @@ class TestPatientDataPersistence(unittest.TestCase):
         
         # Verify test result is recorded
         self.assertIn(1.2, self.storage_manager.current_patients['001']['creatinine_results'])
-        self.assertTrue(self.storage_manager.current_patients['001'] == {'name': 'John Doe', 'date_of_birth': '1980-01-01', 'sex': 'M', 'creatinine_results': [1.2]})
+        self.assertTrue(self.storage_manager.current_patients['001'] == {'name': 'John Doe', 'date_of_birth': '1980-01-01', 'sex': 'M', 'creatinine_results': [1.2], 'previous_positive_aki_prediction': False})
 
         # Step 3: Discharge the patient
         self.storage_manager.update_patients_data_in_creatinine_results_history(

@@ -60,14 +60,13 @@ p_message_errors = Counter("message_errors", "Number of times a message was badl
 
 start_http_server(PROMETHEUS_PORT)
 
-global stop_event
-stop_event = False
+global stopping_condition
+stopping_condition = False
 
 def shutdown():
-    global stop_event
-    stop_event = True
+    global stopping_condition
+    stopping_condition = True
     print("graceful shutdown")
-    # Maybe do not need sys.exit(0) here
     sys.exit(0)
     
 signal.signal(signal.SIGTERM, shutdown)
@@ -97,11 +96,20 @@ def parse_mllp_messages(buffer, source):
 def initialise_system(message_log_filepath : str = MESSAGE_LOG_CSV_PATH):
     """
     Initialises the environment for the aki prediction system.
+    
+    This function creates the necessary objects for the system to work, namely the storage manager and the alert manager, 
+    It also loads past data to make the system up to date.
+    
+    Args:
+        message_log_filepath (str): The path to the message log file.
+        
+    Returns:
+        storage_manager (StorageManager): The storage manager object.
+        alert_manager (AlertManager): The alert manager object.
     """
     storage_manager = StorageManager(message_log_filepath = message_log_filepath)
-    storage_manager.initialise_database(history_csv_path=HISTORY_CSV_PATH)
-
     alert_manager = AlertManager()
+    storage_manager.initialise_database(history_csv_path=HISTORY_CSV_PATH)
     
     return storage_manager, alert_manager
 
@@ -126,8 +134,8 @@ def send_ack(s: socket.socket):
 def listen_for_messages(storage_manager: StorageManager, 
                         alert_manager: AlertManager,
                         address: tuple[str, int] = (MLLP_ADDRESS, MLLP_PORT), 
-                        max_retries: int = 20,
-                        base_delay: float = 1.0,
+                        retries: int = 20,
+                        start_delay: float = 1.0,
                         max_delay: float = 30.0) -> None:
     """Receives HL7 messages over a socket, decodes, and queues them for
     processing.
@@ -135,18 +143,18 @@ def listen_for_messages(storage_manager: StorageManager,
     Args:
         address (tuple[str, int]): Hostname and port number for the socket
                                    connection.
-        max_retries (int): Maximum number of reconnection attempts.
-        base_delay (float): Initial delay between reconnection attempts
-                            in seconds.
+        retries (int): number of reconnection attempts.
+        start_delay (float): Initial delay between reconnection attempts
+                            in seconds. Delays increase exponentially.
         max_delay (float): Maximum delay between reconnection attempts
                            in seconds.
     """
-    global stop_event
+    global stopping_condition
     source = f"{MLLP_ADDRESS}:{MLLP_PORT}"
     buffer = b""
     attempt_count = 0
-    delay = base_delay
-    while not stop_event and attempt_count < max_retries:
+    delay = start_delay
+    while not stopping_condition and attempt_count < retries:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 print("Attempting to connect...")
@@ -154,9 +162,9 @@ def listen_for_messages(storage_manager: StorageManager,
                 s.connect(address)
                 print("Connected!")
                 attempt_count = 0
-                delay = base_delay
+                delay = start_delay
                 
-                while not stop_event:
+                while not stopping_condition:
                     r = s.recv(1024)
                     if len(r) == 0:
                         continue
@@ -215,13 +223,13 @@ def listen_for_messages(storage_manager: StorageManager,
         except Exception as e:
             print(f"An error occurred: {e}")
             time.sleep(delay)
-            delay = min(delay * 2, max_delay)  # Exponential backoff with a max
+            delay = min(delay * 2, max_delay)
             attempt_count += 1
             print(f"Attempting to reconnect, attempt {attempt_count}.")
  
-        if attempt_count == max_retries:
+        if attempt_count == retries:
             print("Maximum reconnection attempts reached, stopping.")
-            stop_event = True
+            stopping_condition = True
         print("Closing server socket.")
 
 if __name__ == '__main__':

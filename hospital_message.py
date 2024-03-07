@@ -1,5 +1,3 @@
-from typing import Optional
-
 class PatientAdmissionMessage():
     """
     Handles patient admission messages.

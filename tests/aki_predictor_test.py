@@ -1,13 +1,11 @@
 import unittest
 import numpy as np
 from datetime import datetime, date
-from aki_predictor import AKIPredictor
 from storage_manager import StorageManager
 
 class AKIPredictorTest(unittest.TestCase):
     def setUp(self):
         self.storage_manager = StorageManager()
-        self.predictor = AKIPredictor(self.storage_manager)
         
     def test_predict_aki_positive_case(self):
         test_mrn = '12345'
@@ -19,7 +17,7 @@ class AKIPredictorTest(unittest.TestCase):
         }
         self.storage_manager.current_patients[test_mrn] = test_patient_data_jane
         
-        result = self.predictor.predict_aki(test_mrn)
+        result = self.storage_manager.predict_aki(test_mrn)
 
         self.assertEqual(result, 1)
     
@@ -33,7 +31,7 @@ class AKIPredictorTest(unittest.TestCase):
         }
         self.storage_manager.current_patients[test_mrn] = test_patient_data_jon
         
-        result = self.predictor.predict_aki(test_mrn)
+        result = self.storage_manager.predict_aki(test_mrn)
 
         self.assertEqual(result, 0)   
     

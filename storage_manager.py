@@ -7,6 +7,7 @@ import joblib
 import numpy as np
 from config import MESSAGE_LOG_CSV_PATH, MESSAGE_LOG_CSV_FIELDS, MODEL_PATH
 from hospital_message import PatientAdmissionMessage, TestResultMessage, PatientDischargeMessage
+import copy
 
 from prometheus_client import Counter
 
@@ -220,7 +221,6 @@ class StorageManager:
                     if prediction_result == 1:
                         self.update_positive_aki_prediction_to_current_patients(mrn)
                         p_sum_of_positive_aki_predictions.inc()
-            
             else:
                 p_reinstantiation_errors.inc()
                 
@@ -269,7 +269,7 @@ class StorageManager:
         sex = 0 if patient_data['sex'].lower() == 'm' else 1
         age = self.determine_age(patient_data['date_of_birth'])
 
-        creatinine_results = patient_data['creatinine_results']
+        creatinine_results = patient_data['creatinine_results'].copy()
 
         # Adjust creatinine results to match model input requirements
         if len(creatinine_results) > num_creatinine_results:

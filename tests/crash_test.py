@@ -7,11 +7,10 @@ class TestRecoveryProcess(unittest.TestCase):
         """Set up the test environment and simulate initial message processing."""
         message_log_filepath = 'message_log_crash_test.csv'
         self.storage_manager = StorageManager(message_log_filepath=message_log_filepath)
-        self.storage_manager.initialise_database(wipe_past_message_log = True)
+        self.storage_manager.initialise_database('history.csv', wipe_past_message_log = True,)
 
         
         # Simulate processing of HL7 messages
-        
         admission_messages = (PatientAdmissionMessage('123', 'John Doe', '1990-01-01', 'M'),
                               PatientAdmissionMessage('124', 'Jane Doe', '1991-01-01', 'F'),
                               # For the next patients, the MRN results past creatinine 
@@ -55,7 +54,7 @@ class TestRecoveryProcess(unittest.TestCase):
 
         # Simulate the recovery process
         # This would read from message_log.csv and repopulate the dictionaries
-        self.storage_manager.initialise_database()
+        self.storage_manager.initialise_database('history.csv')
     
         self.assertIn('124', self.storage_manager.current_patients)
         self.assertIn('822825', self.storage_manager.current_patients)
