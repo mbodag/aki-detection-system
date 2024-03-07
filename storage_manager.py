@@ -169,14 +169,6 @@ class StorageManager:
         """
         Reads message_log.csv, sorts messages chronologically, and creates message object instances.
         """
-        # Check if the CSV file does not exist, we create it
-        # if not os.path.exists(message_log_filepath):
-        #     with open(message_log_filepath, 'w', newline='') as csvfile:
-        #         writer = csv.DictWriter(csvfile, fieldnames=fields)
-        #         writer.writeheader()  # Write the header row
-        #         pass
-        # else:
-        # Read the history.csv file to populate the creatinine_results_history dictionary
         df = pd.read_csv(self.message_log_filepath)         
         for _, row in df.iterrows():
             p_sum_of_all_messages.inc()
@@ -280,7 +272,6 @@ class StorageManager:
             recent_results = creatinine_results
         
         input_features = [age, sex] + recent_results
-        # Predict AKI and return the prediction
         return self.model.predict(np.array(input_features, dtype=np.float64).reshape(1, -1))[0]
 
 
